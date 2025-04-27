@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Калькулятор затратности образовательных программ{% endblock %}</title>
+    <!-- Подключение Bulma CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <!-- Font Awesome для иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- HTMX для асинхронных запросов -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Flash сообщения -->
+    <div id="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="notification flash-message is-{{ 'success' if category == 'success' else 'danger' }}" data-autodismiss>
+                        <button class="delete"></button>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    {% block content %}{% endblock %}
+    
+    <!-- Скрипты -->
+    <script>
+        // Обработчик закрытия уведомлений
+        document.addEventListener('DOMContentLoaded', () => {
+            (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
+                const $notification = $delete.parentNode;
+                $delete.addEventListener('click', () => {
+                    $notification.parentNode.removeChild($notification);
+                });
+            });
+            
+            // Автоматическое исчезновение flash-сообщений
+            setTimeout(() => {
+                const flashMessages = document.querySelectorAll('.flash-message[data-autodismiss]');
+                flashMessages.forEach(message => {
+                    message.style.opacity = '0';
+                    setTimeout(() => {
+                        if (message.parentNode) {
+                            message.parentNode.removeChild(message);
+                        }
+                    }, 500); // Время для анимации исчезновения
+                });
+            }, 3000); // 3 секунды до начала исчезновения
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

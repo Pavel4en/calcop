@@ -1,0 +1,232 @@
+/* Стили для страницы авторизации */
+.shadow {
+  box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
+}
+
+/* Стили для иконки глаза у поля пароля */
+.password-toggle {
+  cursor: pointer;
+}
+
+/* Стили для flash-сообщений */
+#flash-messages {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 400px;
+  max-width: 90%;
+}
+
+.flash-message {
+  transition: opacity 0.5s ease-in-out;
+  opacity: 1;
+  margin-bottom: 10px;
+}
+
+/* Стили для бокового меню */
+.sidebar {
+  border-right: 1px solid #f0f0f0;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  max-width: 250px;
+  width: 100%;
+}
+
+.menu-list a {
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.menu-list a.is-active {
+  background-color: #f0f0f0;
+  color: #363636;
+  font-weight: bold;
+  border-left: 3px solid #3273dc;
+}
+
+.menu-list a:hover {
+  background-color: #f5f5f5;
+}
+
+/* Стили для кнопки бургер-меню */
+.burger-menu-toggle {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.burger-menu-toggle.is-active {
+  background-color: #f0f0f0;
+}
+
+/* Стили для формы расчета нагрузки */
+.box {
+  box-shadow: 0 2px 10px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.05);
+  margin-bottom: 1.5rem;
+  border-radius: 6px;
+  transition: box-shadow 0.3s ease;
+}
+
+.box:hover {
+  box-shadow: 0 4px 15px rgba(10, 10, 10, 0.15), 0 0 0 1px rgba(10, 10, 10, 0.1);
+}
+
+.table-container {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Стили для таблицы учебного плана */
+#study-plan-table {
+  font-size: 0.9rem;
+}
+
+#study-plan-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f5f5f5;
+  z-index: 10;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: center;
+}
+
+#study-plan-table input.input.is-small {
+  height: 2rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+#study-plan-table td {
+  vertical-align: middle;
+}
+
+/* Стили для формы сведений о программе */
+.box .field .label {
+  margin-bottom: 0.25rem;
+}
+
+.box .field p {
+  padding-left: 0.5rem;
+}
+
+/* Стили для индикатора загрузки HTMX */
+.htmx-indicator {
+  display: none;
+}
+.htmx-request .htmx-indicator {
+  display: block;
+}
+.htmx-request.htmx-indicator {
+  display: block;
+}
+
+/* Стили для чекбокса */
+.checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.checkbox input {
+  margin-right: 0.5rem;
+}
+
+/* Стили для мобильной версии */
+@media screen and (max-width: 768px) {
+  .sidebar {
+      display: none;
+  }
+  
+  .sidebar.is-active {
+      display: block;
+  }
+}
+
+/* Стили для тултипов */
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+    margin-left: 5px;
+    cursor: help;
+}
+
+.tooltip-icon {
+    background-color: #f14668;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+}
+
+.tooltip-content {
+    display: none;
+    width: 280px;
+    background-color: #363636;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px 15px;
+    position: absolute;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    pointer-events: none;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -140px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    overflow: hidden;
+}
+
+.tooltip-content::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #363636 transparent transparent transparent;
+}
+
+/* Особые стили для тултипов в заголовках таблицы */
+th .tooltip-container .tooltip-content {
+    bottom: auto;
+    top: 125%;
+    left: 0;
+    margin-left: 0;
+}
+
+th .tooltip-container .tooltip-content::after {
+    top: auto;
+    bottom: 100%;
+    left: 10%;
+    border-color: transparent transparent #363636 transparent;
+}
+
+/* Для тултипов в правой части таблицы */
+th:nth-child(n+7) .tooltip-container .tooltip-content {
+    left: auto;
+    right: 0;
+}
+
+th:nth-child(n+7) .tooltip-container .tooltip-content::after {
+    left: auto;
+    right: 10%;
+}
+
+.tooltip-container:hover .tooltip-content {
+    display: block;
+    opacity: 1;
+}

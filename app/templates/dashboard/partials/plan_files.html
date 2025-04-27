@@ -1,0 +1,72 @@
+<!-- Добавляем поле поиска над селектом -->
+<div class="field has-addons mb-2">
+    <div class="control is-expanded">
+        <input id="plan-file-search" class="input" type="text" placeholder="Введите название файла для поиска">
+    </div>
+    <div class="control">
+        <button id="clear-search" type="button" class="button is-info">
+            <span class="icon is-small">
+                <i class="fas fa-times"></i>
+            </span>
+        </button>
+    </div>
+</div>
+
+<!-- Селект с файлами -->
+<option value="">Выберите файл учебного плана</option>
+{% for file in plan_files %}
+    <option value="{{ file[0] }}" class="plan-file-option">{{ file[0] }}</option>
+{% endfor %}
+
+<!-- Передача значения курса для заполнения соответствующего поля -->
+<script>
+    document.getElementById('course').value = '{{ course }}';
+    
+    // Добавляем функциональность поиска
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('plan-file-search');
+        const planFileSelect = document.getElementById('plan-file');
+        const clearButton = document.getElementById('clear-search');
+        
+        // Функция для фильтрации опций
+        function filterOptions() {
+            const searchText = searchInput.value.toLowerCase();
+            const options = planFileSelect.querySelectorAll('option');
+            
+            let visibleCount = 0;
+            
+            options.forEach(option => {
+                // Пропускаем первую опцию (заголовок)
+                if (option.value === '') return;
+                
+                const optionText = option.textContent.toLowerCase();
+                if (optionText.includes(searchText)) {
+                    option.style.display = '';
+                    visibleCount++;
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+            
+            // Если есть только одна видимая опция, выбираем ее
+            if (visibleCount === 1) {
+                options.forEach(option => {
+                    if (option.value !== '' && option.style.display !== 'none') {
+                        planFileSelect.value = option.value;
+                    }
+                });
+            }
+        }
+        
+        // Обработчик события ввода в поле поиска
+        searchInput.addEventListener('input', filterOptions);
+        
+        // Обработчик для кнопки очистки
+        clearButton.addEventListener('click', function() {
+            searchInput.value = '';
+            planFileSelect.querySelectorAll('option').forEach(option => {
+                option.style.display = '';
+            });
+        });
+    });
+</script>

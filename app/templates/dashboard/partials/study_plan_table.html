@@ -1,0 +1,193 @@
+{% if plan_data and plan_data|length > 0 %}
+    <!-- Форма сведений о программе -->
+    {% if program_info %}
+    <div class="box mt-5">
+        <h3 class="title is-4">Сведения о программе</h3>
+        <div class="columns is-multiline">
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Год реализации</label>
+                    <p>{{ program_info.academic_year }}</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Год набора</label>
+                    <p>{{ program_info.admission_year }}</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Код специальности</label>
+                    <p>{{ program_info.specialty_code }}</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Квалификация</label>
+                    <p>{{ program_info.qualification }}</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Специальность</label>
+                    <p>{{ program_info.specialty }}</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Профиль</label>
+                    <p>{{ program_info.profile }}</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">
+                        Выпускаемая кафедра
+                        {% if not program_info.department %}
+                        <div class="tooltip-container">
+                            <div class="tooltip-icon">
+                                <i class="fas fa-exclamation"></i>
+                            </div>
+                            <div class="tooltip-content">
+                                Выпускаемая кафедра не указана на титуле в учебном плане
+                            </div>
+                        </div>
+                        {% endif %}
+                    </label>
+                    <p>{{ program_info.department }}</p>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Форма обучения</label>
+                    <p>{{ program_info.education_form }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <h3 class="title is-4 mt-5">Данные учебного плана</h3>
+    
+    <div class="table-container">
+        <table id="study-plan-table" class="table is-bordered is-striped is-hoverable is-fullwidth">
+            <thead>
+                <tr>
+                    {% for col in display_columns %}
+                        <th>
+                            {{ col }}
+                            {% if col == 'Учитывать' %}
+                                <div class="tooltip-container">
+                                    <div class="tooltip-icon">
+                                        <i class="fas fa-exclamation"></i>
+                                    </div>
+                                    <div class="tooltip-content">
+                                        По умолчанию все дисциплины участвуют в расчете нагрузки, если дисциплину нужно исключить, то снимите галочки
+                                    </div>
+                                </div>
+                            {% elif col == 'Недели' %}
+                                <div class="tooltip-container">
+                                    <div class="tooltip-icon">
+                                        <i class="fas fa-exclamation"></i>
+                                    </div>
+                                    <div class="tooltip-content">
+                                        Недели нужны для расчета нагрузки по практикам, у которых есть статус "Непосредственно с участием ППС"
+                                    </div>
+                                </div>
+                            {% elif col == 'Контингент по дисциплине' %}
+                                <div class="tooltip-container">
+                                    <div class="tooltip-icon">
+                                        <i class="fas fa-exclamation"></i>
+                                    </div>
+                                    <div class="tooltip-content">
+                                        Необходимо указать количество студентов, для которого реализуется образовательная активность.
+                                    </div>
+                                </div>
+                            {% elif col == 'Численность потока' %}
+                                <div class="tooltip-container">
+                                    <div class="tooltip-icon">
+                                        <i class="fas fa-exclamation"></i>
+                                    </div>
+                                    <div class="tooltip-content">
+                                        Необходимо указать общую численность потока, в котором реализуется образовательная активность. Численность потока должна быть больше численности группы. Нагрузка рассчитывается пропорционально доли численности студентов группы в указанной численности потока.
+                                    </div>
+                                </div>
+                            {% elif col == 'Количество подгрупп' %}
+                                <div class="tooltip-container">
+                                    <div class="tooltip-icon">
+                                        <i class="fas fa-exclamation"></i>
+                                    </div>
+                                    <div class="tooltip-content">
+                                        Необходимо указать количество подгрупп, на которые разделяется группа в рамках образовательной активности. Нагрузка рассчитывается на каждую подгруппу
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in plan_data %}
+                    <tr>
+                        <!-- Учитывать (чекбокс) -->
+                        <td class="has-text-centered">
+                            <label class="checkbox">
+                                <input type="checkbox" class="consider-checkbox" checked onchange="updateCommentsField(this)">
+                            </label>
+                        </td>
+                        
+                        <!-- Данные из базы -->
+                        {% for col in display_columns[1:9] %}
+                            {% if col in column_indices %}
+                                <td>{{ row[column_indices[col]]|default('') }}</td>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <!-- Контингент по дисциплине -->
+                        <td>
+                            <input type="number" class="input is-small" value="{{ contingent }}" min="1">
+                        </td>
+                        
+                        <!-- Численность потока -->
+                        <td>
+                            <input type="number" class="input is-small" value="{{ contingent }}" min="1">
+                        </td>
+                        
+                        <!-- Количество подгрупп -->
+                        <td>
+                            <input type="number" class="input is-small" value="1" min="1">
+                        </td>
+                        
+                        <!-- Комментарии -->
+                        <td>
+                            <input type="text" class="input is-small comment-field">
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Функция для обновления поля комментариев при изменении чекбокса
+        function updateCommentsField(checkbox) {
+            const row = checkbox.closest('tr');
+            const commentField = row.querySelector('.comment-field');
+            
+            if (!checkbox.checked) {
+                commentField.value = "Не участвует в расчете нагрузки";
+                commentField.setAttribute('readonly', 'readonly');
+            } else {
+                if (commentField.value === "Не участвует в расчете нагрузки") {
+                    commentField.value = "";
+                }
+                commentField.removeAttribute('readonly');
+            }
+        }
+    </script>
+{% else %}
+    <div class="notification is-warning mt-5">
+        <p>По заданным параметрам не найдено данных учебного плана.</p>
+    </div>
+{% endif %}

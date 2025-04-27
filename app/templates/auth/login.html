@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Вход в систему - Калькулятор затратности образовательных программ{% endblock %}
+
+{% block content %}
+<section class="hero is-fullheight">
+    <div class="hero-body">
+        <div class="container">
+            <div class="columns is-vcentered">
+                <!-- Левая колонка с заголовком -->
+                <div class="column is-6">
+                    <div class="ml-6 mt-6">
+                        <h1 class="title is-1 has-text-weight-bold">
+                            Калькулятор затратности
+                        </h1>
+                        <h2 class="title is-2 has-text-weight-bold">
+                            Образовательных программ
+                        </h2>
+                    </div>
+                </div>
+                
+                <!-- Правая колонка с формой авторизации -->
+                <div class="column is-5 is-offset-1">
+                    <div class="box shadow">
+                        <!-- Место для логотипа -->
+                        <div class="has-text-centered mb-5">
+                            <figure class="image is-128x128 is-inline-block">
+                                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Логотип">
+                            </figure>
+                        </div>
+                        
+                        <!-- Форма входа -->
+                        <form method="POST" action="{{ url_for('auth.login') }}">
+                            <div class="field">
+                                <label class="label">Логин</label>
+                                <div class="control has-icons-left">
+                                    <input class="input" type="text" name="login" placeholder="Введите ваш логин" required>
+                                    <span class="icon is-small is-left">
+                                        <i class="fas fa-user"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="field">
+                                <label class="label">Пароль</label>
+                                <div class="control has-icons-left has-icons-right">
+                                    <input class="input" id="password-field" type="password" name="password" placeholder="Введите ваш пароль" required>
+                                    <span class="icon is-small is-left">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                    <span class="icon is-small is-right password-toggle" id="password-toggle-button">
+                                        <i id="password-icon" class="fas fa-eye"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="field mt-5">
+                                <div class="control">
+                                    <button type="submit" class="button is-primary is-fullwidth has-text-weight-bold">
+                                        ВОЙТИ
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+{% endblock %}

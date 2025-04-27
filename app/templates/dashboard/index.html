@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Калькулятор затратности образовательных программ{% endblock %}
+
+{% block content %}
+<div class="container is-fluid p-0">
+    <!-- Навигационная панель -->
+    <nav class="navbar is-light" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <!-- Бургер-меню -->
+            <a role="button" class="navbar-item burger-menu-toggle ml-2" id="burger-menu-button">
+                <span class="icon">
+                    <i class="fas fa-bars"></i>
+                </span>
+            </a>
+            
+            <!-- Название раздела -->
+            <div class="navbar-item">
+                <h1 class="title is-5" id="section-title">Расчет нагрузки</h1>
+            </div>
+        </div>
+
+        <div class="navbar-end">
+            <div class="navbar-item">
+                {{ user.full_name }}
+            </div>
+            <div class="navbar-item">
+                <a href="{{ url_for('auth.logout') }}" class="button is-light" title="Выйти">
+                    <span class="icon">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент с боковым меню -->
+    <div class="columns is-gapless" style="min-height: calc(100vh - 52px);">
+        <!-- Боковое меню (изначально скрыто) -->
+        <div class="column is-2 sidebar has-background-light" id="sidebar-menu" style="display: none;">
+            <aside class="menu p-4">
+                <p class="menu-label">Навигация</p>
+                <ul class="menu-list">
+                    <li><a class="is-active" href="#" data-section="Расчет нагрузки">Расчет нагрузки</a></li>
+                    <li><a href="#" data-section="Инструкция">Инструкция</a></li>
+                    {% if user.is_admin %}
+                    <li><a href="{{ url_for('main.settings') }}" data-section="Настройки">Настройки</a></li>
+                    {% endif %}
+                </ul>
+            </aside>
+        </div>
+        
+        <!-- Основное содержимое -->
+        <div class="column content-area" id="main-content">
+            <div class="section">
+                <div class="container is-fluid">
+                    <h2 class="title">Расчет нагрузки</h2>
+                    
+                    <!-- Форма расчета нагрузки -->
+                    <div class="box">
+                        <form id="study-plan-form">
+                            <div class="columns is-multiline">
+                                <!-- Год реализации -->
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <label class="label">Год реализации</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="academic-year" name="academic_year" required
+                                                        hx-get="/get_admission_years"
+                                                        hx-trigger="change"
+                                                        hx-target="#admission-year"
+                                                        hx-indicator="#loading-indicator">
+                                                    <option value="">Выберите год</option>
+                                                    {% for year in academic_years %}
+                                                        <option value="{{ year[0] }}">{{ year[0] }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Год набора -->
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <label class="label">Год набора</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="admission-year" name="admission_year" required
+                                                        hx-get="/get_plan_files"
+                                                        hx-trigger="change"
+                                                        hx-target="#plan-file"
+                                                        hx-include="#academic-year"
+                                                        hx-indicator="#loading-indicator">
+                                                    <option value="">Сначала выберите год реализации</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Файл учебного плана -->
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <label class="label">Файл учебного плана</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="plan-file" name="plan_file" required>
+                                                    <option value="">Сначала выберите год набора</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Курс (не активный) -->
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <label class="label">
+                                            Курс
+                                            <div class="tooltip-container">
+                                                <div class="tooltip-icon">
+                                                    <i class="fas fa-exclamation"></i>
+                                                </div>
+                                                <div class="tooltip-content">
+                                                    Курс будет вставляться автоматически в зависимости от выбранного года набора
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <div class="control">
+                                            <input id="course" class="input" type="text" name="course" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Расчетный контингент -->
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <label class="label">Расчетный контингент</label>
+                                        <div class="control">
+                                            <input id="contingent" class="input" type="number" name="contingent" min="1" value="1">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Выводить все дисциплины выбора -->
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <label class="label">
+                                            Выводить все дисциплины выбора
+                                            <div class="tooltip-container">
+                                                <div class="tooltip-icon">
+                                                    <i class="fas fa-exclamation"></i>
+                                                </div>
+                                                <div class="tooltip-content">
+                                                    Если данный параметр не включен, то в таблице будут загружены только те дисциплины, у которых в учебном плане стоит галочка "Считать в плане"
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <div class="control">
+                                            <label class="checkbox">
+                                                <input id="show-all-disciplines" type="checkbox" name="show_all_disciplines" value="1">
+                                                <span>Показать все дисциплины</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Кнопка -->
+                                <div class="column is-3">
+                                    <div class="field">
+                                        <div class="control">
+                                            <button type="button" class="button is-primary"
+                                                    hx-get="/load_study_plan"
+                                                    hx-include="#academic-year, #admission-year, #plan-file, #show-all-disciplines, #contingent, #course"
+                                                    hx-target="#study-plan-results"
+                                                    hx-indicator="#loading-indicator">
+                                                <span class="icon">
+                                                    <i class="fas fa-upload"></i>
+                                                </span>
+                                                <span>Загрузить данные</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Индикатор загрузки -->
+                    <div id="loading-indicator" class="htmx-indicator has-text-centered my-5">
+                        <span class="icon is-large">
+                            <i class="fas fa-spinner fa-pulse fa-2x"></i>
+                        </span>
+                        <p class="mt-2">Загрузка данных...</p>
+                    </div>
+                    
+                    <!-- Результаты расчета нагрузки -->
+                    <div id="study-plan-results"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Обработчик для бургер-меню
+        const burgerButton = document.getElementById('burger-menu-button');
+        const sidebar = document.getElementById('sidebar-menu');
+        const mainContent = document.getElementById('main-content');
+        
+        burgerButton.addEventListener('click', () => {
+            if (sidebar.style.display === 'none' || sidebar.style.width === '0px') {
+                // Плавное открытие
+                sidebar.style.display = 'block';
+                sidebar.style.width = '0px';
+                setTimeout(() => {
+                    sidebar.style.width = '250px';
+                }, 10);
+                
+                mainContent.classList.remove('is-12');
+                mainContent.classList.add('is-10');
+                burgerButton.classList.add('is-active');
+            } else {
+                // Плавное закрытие
+                sidebar.style.width = '0px';
+                setTimeout(() => {
+                    sidebar.style.display = 'none';
+                }, 300); // Должно совпадать с transition в CSS
+                
+                mainContent.classList.remove('is-10');
+                mainContent.classList.add('is-12');
+                burgerButton.classList.remove('is-active');
+            }
+        });
+        
+        // Обновление заголовка секции при клике на пункт меню
+        const menuItems = document.querySelectorAll('.menu-list a');
+        const sectionTitle = document.getElementById('section-title');
+        
+        menuItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                menuItems.forEach(i => i.classList.remove('is-active'));
+                this.classList.add('is-active');
+                
+                // Обновляем заголовок секции
+                if (this.hasAttribute('data-section')) {
+                    sectionTitle.textContent = this.getAttribute('data-section');
+                }
+                
+                // Если это не переход на другую страницу, то отменяем стандартное поведение
+                if (!this.hasAttribute('href') || this.getAttribute('href') === '#') {
+                    e.preventDefault();
+                }
+                
+                // На мобильных устройствах автоматически скрываем меню после выбора
+                if (window.innerWidth < 769) {
+                    sidebar.style.display = 'none';
+                    burgerButton.classList.remove('is-active');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
