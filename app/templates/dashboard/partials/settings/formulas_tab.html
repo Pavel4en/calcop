@@ -1,0 +1,484 @@
+<h3 class="title is-4">Управление формулами расчета нагрузки</h3>
+
+<div class="level">
+    <div class="level-left">
+        <p class="is-size-6 has-text-grey">
+            Здесь вы можете управлять формулами расчета учебной нагрузки, которые используются при расчетах
+        </p>
+    </div>
+    <div class="level-right">
+        <button class="button is-primary" id="add-formula-button">
+            <span class="icon">
+                <i class="fas fa-plus"></i>
+            </span>
+            <span>Добавить формулу</span>
+        </button>
+    </div>
+</div>
+
+<!-- Таблица с формулами -->
+<div class="table-container">
+    <table class="table is-bordered is-striped is-hoverable is-fullwidth" id="formulas-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Код условия</th>
+                <th>Условие</th>
+                <th>Формула расчета</th>
+                <th>Пункт приказа</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody id="formulas-table-body">
+            <!-- Данные будут загружены через AJAX -->
+            <tr>
+                <td colspan="7" class="has-text-centered">
+                    <div class="mt-4 mb-4">
+                        <span class="icon is-large">
+                            <i class="fas fa-spinner fa-pulse fa-2x"></i>
+                        </span>
+                        <p class="mt-2">Загрузка данных...</p>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Справка по использованию формул -->
+<div class="box shadow mt-5">
+    <h4 class="title is-5 mb-4">Справка по использованию формул</h4>
+    
+    <div class="content">
+        <div class="columns">
+            <div class="column is-6">
+                <h5 class="subtitle is-6">Доступные переменные:</h5>
+                <ul>
+                    <li><code>row['Часы']</code> - Часы из учебного плана</li>
+                    <li><code>row['Контингент по дисциплине']</code> - Контингент студентов</li>
+                    <li><code>row['Численность потока']</code> - Численность потока</li>
+                    <li><code>row['Количество подгрупп']</code> - Количество подгрупп</li>
+                    <li><code>row['Недели']</code> - Количество недель</li>
+                    <li><code>row['ЗЕТ']</code> - Зачетные единицы трудоемкости</li>
+                    <li><code>norms['Название нормы']</code> - Доступ к нормам по названию</li>
+                </ul>
+            </div>
+            
+            <div class="column is-6">
+                <h5 class="subtitle is-6">Описание полей:</h5>
+                <ul>
+                    <li><strong>Код условия</strong> - Уникальный идентификатор условия (например, <code>lecture</code>, <code>practice_lang</code>)</li>
+                    <li><strong>Условие</strong> - Описание условия применения формулы в текстовом виде</li>
+                    <li><strong>Формула расчета</strong> - Формула на Python для расчета нагрузки</li>
+                    <li><strong>Пункт приказа</strong> - Номер пункта приказа для отображения в отчетах</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="notification is-light is-info">
+            <p class="has-text-weight-semibold">Примечание:</p>
+            <p>При написании формул используйте стандартный синтаксис Python. Для доступа к значениям используйте конструкцию <code>float(row['Название поля'])</code>.</p>
+            <p>Для проверки условий с непосредственным участием ППС используйте <code>row.get('С непосредственным участием ППС') == 'on'</code>.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления/редактирования формулы -->
+<div class="modal" id="formula-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title" id="formula-modal-title">Добавление формулы</p>
+            <button class="delete" aria-label="close" id="close-formula-modal" onclick="closeFormulaModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            <form id="formula-form">
+                <input type="hidden" id="formula-id">
+                
+                <div class="field">
+                    <label class="label">Название формулы</label>
+                    <div class="control">
+                        <input type="text" class="input" id="formula-name" required>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Код условия</label>
+                    <div class="control">
+                        <input type="text" class="input" id="formula-condition-code" required>
+                    </div>
+                    <p class="help">Уникальный идентификатор условия (например, lecture, practice_lang)</p>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Условие</label>
+                    <div class="control">
+                        <textarea class="textarea" id="formula-condition" required></textarea>
+                    </div>
+                    <p class="help">Описание условия применения формулы в текстовом виде</p>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Формула расчета</label>
+                    <div class="control">
+                        <textarea class="textarea" id="formula-calculation" required></textarea>
+                    </div>
+                    <p class="help">Формула для расчета нагрузки (например, float(row['Часы']) * float(row['Количество подгрупп']))</p>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Пункт приказа</label>
+                    <div class="control">
+                        <input type="text" class="input" id="formula-order-point">
+                    </div>
+                    <p class="help">Номер пункта приказа, который будет отображаться в результатах</p>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Комментарий</label>
+                    <div class="control">
+                        <textarea class="textarea" id="formula-comment"></textarea>
+                    </div>
+                </div>
+            </form>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-primary" id="save-formula-button" onclick="saveFormula()">Сохранить</button>
+            <button class="button" id="cancel-formula-button" onclick="closeFormulaModal()">Отмена</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal" id="confirm-delete-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Подтверждение удаления</p>
+            <button class="delete" aria-label="close" id="close-confirm-modal" onclick="closeConfirmModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            <p>Вы действительно хотите удалить формулу <strong id="delete-formula-name"></strong>?</p>
+            <p class="has-text-danger">Это действие невозможно отменить.</p>
+            <input type="hidden" id="delete-formula-id">
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-danger" id="confirm-delete-button" onclick="deleteFormula()">Удалить</button>
+            <button class="button" id="cancel-delete-button" onclick="closeConfirmModal()">Отмена</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Стили для таблицы формул -->
+<style>
+    /* Стили для кода */
+    code {
+        background-color: #f5f5f5;
+        color: #ff3860;
+        font-size: 0.875em;
+        font-weight: normal;
+        padding: 0.25em 0.5em 0.25em;
+        word-break: break-all;
+    }
+    
+    /* Стили для справки */
+    .content ul {
+        margin-left: 1em;
+    }
+    
+    .content li {
+        margin-bottom: 0.5em;
+    }
+    
+    /* Стили для модального окна */
+    .modal-card {
+        max-width: 800px;
+        width: 95%;
+    }
+</style>
+
+<!-- Скрипты для управления формулами -->
+<script>
+// Глобальные переменные и элементы DOM
+let currentFormula = null;
+
+// Загрузка формул при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация обработчика для кнопки добавления формулы
+    document.getElementById('add-formula-button').onclick = function() {
+        openAddFormulaModal();
+    };
+    
+    // Загружаем формулы при переключении на вкладку формул
+    document.getElementById('tab-formulas').addEventListener('click', function() {
+        loadFormulas();
+    });
+    
+    // Если вкладка формул активна при загрузке страницы, загружаем формулы сразу
+    if (document.getElementById('tab-formulas').classList.contains('is-active')) {
+        loadFormulas();
+    }
+});
+
+// Функция загрузки формул
+function loadFormulas() {
+    const tbody = document.getElementById('formulas-table-body');
+    tbody.innerHTML = '<tr><td colspan="7" class="has-text-centered"><div class="mt-4 mb-4"><span class="icon is-large"><i class="fas fa-spinner fa-pulse fa-2x"></i></span><p class="mt-2">Загрузка данных...</p></div></td></tr>';
+    
+    // Выполняем GET-запрос на API
+    fetch('/formulas/api/formulas')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP error ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Loaded formulas:', data);
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="has-text-centered">Нет данных</td></tr>';
+                return;
+            }
+            
+            data.forEach(formula => {
+                const tr = document.createElement('tr');
+                
+                // ID
+                const tdId = document.createElement('td');
+                tdId.textContent = formula.id;
+                tr.appendChild(tdId);
+                
+                // Название
+                const tdName = document.createElement('td');
+                tdName.textContent = formula.name;
+                tr.appendChild(tdName);
+                
+                // Код условия
+                const tdConditionCode = document.createElement('td');
+                tdConditionCode.textContent = formula.condition_code;
+                tr.appendChild(tdConditionCode);
+                
+                // Условие
+                const tdCondition = document.createElement('td');
+                tdCondition.textContent = formula.condition;
+                tr.appendChild(tdCondition);
+                
+                // Формула расчета
+                const tdFormula = document.createElement('td');
+                tdFormula.innerHTML = `<code>${formula.formula}</code>`;
+                tr.appendChild(tdFormula);
+                
+                // Пункт приказа
+                const tdOrderPoint = document.createElement('td');
+                tdOrderPoint.textContent = formula.order_point || '';
+                tr.appendChild(tdOrderPoint);
+                
+                // Действия
+                const tdActions = document.createElement('td');
+                
+                // Кнопка редактирования
+                const editButton = document.createElement('button');
+                editButton.className = 'button is-small is-info mr-1';
+                editButton.innerHTML = '<span class="icon"><i class="fas fa-edit"></i></span>';
+                editButton.title = 'Редактировать';
+                editButton.onclick = function() { openEditFormulaModal(formula); };
+                tdActions.appendChild(editButton);
+                
+                // Кнопка удаления
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'button is-small is-danger';
+                deleteButton.innerHTML = '<span class="icon"><i class="fas fa-trash"></i></span>';
+                deleteButton.title = 'Удалить';
+                deleteButton.onclick = function() { openDeleteConfirmModal(formula); };
+                tdActions.appendChild(deleteButton);
+                
+                tr.appendChild(tdActions);
+                
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки формул:', error);
+            tbody.innerHTML = '<tr><td colspan="7" class="has-text-centered has-text-danger">Ошибка загрузки данных</td></tr>';
+        });
+}
+
+// Открытие модального окна добавления формулы
+function openAddFormulaModal() {
+    document.getElementById('formula-modal-title').textContent = 'Добавление формулы';
+    document.getElementById('formula-id').value = '';
+    document.getElementById('formula-name').value = '';
+    document.getElementById('formula-condition-code').value = '';
+    document.getElementById('formula-condition').value = '';
+    document.getElementById('formula-calculation').value = '';
+    document.getElementById('formula-order-point').value = '';
+    document.getElementById('formula-comment').value = '';
+    
+    document.getElementById('formula-modal').classList.add('is-active');
+}
+
+// Открытие модального окна редактирования формулы
+function openEditFormulaModal(formula) {
+    currentFormula = formula;
+    
+    document.getElementById('formula-modal-title').textContent = 'Редактирование формулы';
+    document.getElementById('formula-id').value = formula.id;
+    document.getElementById('formula-name').value = formula.name;
+    document.getElementById('formula-condition-code').value = formula.condition_code;
+    document.getElementById('formula-condition').value = formula.condition;
+    document.getElementById('formula-calculation').value = formula.formula;
+    document.getElementById('formula-order-point').value = formula.order_point || '';
+    document.getElementById('formula-comment').value = formula.comment || '';
+    
+    document.getElementById('formula-modal').classList.add('is-active');
+}
+
+// Закрытие модального окна формулы
+function closeFormulaModal() {
+    document.getElementById('formula-modal').classList.remove('is-active');
+}
+
+// Сохранение формулы
+function saveFormula() {
+    const form = document.getElementById('formula-form');
+    
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const formulaId = document.getElementById('formula-id').value;
+    const formulaName = document.getElementById('formula-name').value;
+    const formulaConditionCode = document.getElementById('formula-condition-code').value;
+    const formulaCondition = document.getElementById('formula-condition').value;
+    const formulaCalculation = document.getElementById('formula-calculation').value;
+    const formulaOrderPoint = document.getElementById('formula-order-point').value;
+    const formulaComment = document.getElementById('formula-comment').value;
+    
+    const formulaData = {
+        name: formulaName,
+        condition_code: formulaConditionCode,
+        condition: formulaCondition,
+        formula: formulaCalculation,
+        order_point: formulaOrderPoint,
+        comment: formulaComment
+    };
+    
+    const isEdit = formulaId !== '';
+    const url = isEdit ? `/formulas/api/formulas/${formulaId}` : '/formulas/api/formulas';
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    console.log(`Saving formula: ${method} ${url}`, formulaData);
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(formulaData)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`Error ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Save response:', data);
+        closeFormulaModal();
+        loadFormulas();
+        
+        showNotification(isEdit ? 'Формула успешно обновлена' : 'Формула успешно добавлена');
+    })
+    .catch(error => {
+        console.error('Ошибка сохранения формулы:', error);
+        alert('Произошла ошибка при сохранении формулы: ' + error.message);
+    });
+}
+
+// Открытие модального окна подтверждения удаления
+function openDeleteConfirmModal(formula) {
+    currentFormula = formula;
+    
+    document.getElementById('delete-formula-name').textContent = formula.name;
+    document.getElementById('delete-formula-id').value = formula.id;
+    
+    document.getElementById('confirm-delete-modal').classList.add('is-active');
+}
+
+// Закрытие модального окна подтверждения удаления
+function closeConfirmModal() {
+    document.getElementById('confirm-delete-modal').classList.remove('is-active');
+}
+
+// Удаление формулы
+function deleteFormula() {
+    const formulaId = document.getElementById('delete-formula-id').value;
+    
+    console.log(`Deleting formula: ${formulaId}`);
+    
+    fetch(`/formulas/api/formulas/${formulaId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        console.log('Delete response status:', response.status);
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`Error ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Delete response:', data);
+        closeConfirmModal();
+        loadFormulas();
+        
+        showNotification('Формула успешно удалена');
+    })
+    .catch(error => {
+        console.error('Ошибка удаления формулы:', error);
+        alert('Произошла ошибка при удалении формулы: ' + error.message);
+    });
+}
+
+// Показ уведомления
+function showNotification(message) {
+    const flashMessages = document.getElementById('flash-messages');
+    
+    const notification = document.createElement('div');
+    notification.className = 'notification flash-message is-success';
+    notification.setAttribute('data-autodismiss', '');
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'delete';
+    deleteButton.onclick = function() {
+        notification.parentNode.removeChild(notification);
+    };
+    
+    notification.appendChild(deleteButton);
+    notification.appendChild(document.createTextNode(message));
+    
+    flashMessages.appendChild(notification);
+    
+    // Автоматическое исчезновение уведомления
+    setTimeout(function() {
+        notification.style.opacity = '0';
+        setTimeout(function() {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 500);
+    }, 3000);
+}
+</script>

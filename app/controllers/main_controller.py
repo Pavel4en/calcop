@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, session, request
-from app.controllers.auth_controller import login_required, admin_required
+from app.controllers.auth_controller import login_required
 from app.models.plans import StudyPlan
+from app.models.norms import Norms
 
 main_bp = Blueprint('main', __name__)
 
@@ -13,12 +14,6 @@ def index():
     academic_years = StudyPlan.get_academic_years()
     
     return render_template('dashboard/index.html', user=user_dict, academic_years=academic_years)
-
-@main_bp.route('/settings')
-@admin_required
-def settings():
-    user_dict = session.get('user', {})
-    return render_template('dashboard/settings.html', user=user_dict)
 
 @main_bp.route('/get_admission_years', methods=['GET'])
 @login_required
@@ -148,3 +143,12 @@ def load_study_plan():
                            program_info=program_info,
                            contingent=contingent,
                            tooltip_columns=tooltip_columns)
+
+@main_bp.route('/get_norms', methods=['GET'])
+@login_required
+def get_norms():
+    # Получение норм из базы данных
+    norms_data = Norms.get_all_norms()
+    
+    return render_template('dashboard/partials/norms_form.html', 
+                           norms=norms_data)

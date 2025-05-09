@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки - Калькулятор затратности образовательных программ{% endblock %}
+
+{% block content %}
+<div class="container is-fluid p-0">
+    <!-- Навигационная панель -->
+    <nav class="navbar is-light" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <!-- Бургер-меню -->
+            <button class="navbar-item button is-light ml-2" id="burger-button" onclick="toggleSidebar()">
+                <span class="icon">
+                    <i class="fas fa-bars"></i>
+                </span>
+            </button>
+            
+            <!-- Название раздела -->
+            <div class="navbar-item">
+                <h1 class="title is-5" id="section-title">Настройки</h1>
+            </div>
+        </div>
+
+        <div class="navbar-end">
+            <div class="navbar-item">
+                {{ user.full_name }}
+            </div>
+            <div class="navbar-item">
+                <a href="{{ url_for('auth.logout') }}" class="button is-light" title="Выйти">
+                    <span class="icon">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент с боковым меню -->
+    <div class="columns is-gapless" style="min-height: calc(100vh - 52px);">
+        <!-- Боковое меню (изначально скрыто) -->
+        <div class="column is-2 sidebar has-background-light" id="sidebar-menu" style="display: none;">
+            <aside class="menu p-4">
+                <p class="menu-label">Навигация</p>
+                <ul class="menu-list">
+                    <li><a href="{{ url_for('main.index') }}" data-section="Расчет нагрузки">Расчет нагрузки</a></li>
+                    <li><a href="#" data-section="Инструкция">Инструкция</a></li>
+                    {% if user.is_admin %}
+                    <li><a class="is-active" href="{{ url_for('settings.index') }}" data-section="Настройки">Настройки</a></li>
+                    {% endif %}
+                </ul>
+            </aside>
+        </div>
+        
+        <!-- Основное содержимое -->
+        <div class="column content-area" id="main-content">
+            <div class="section">
+                <div class="container is-fluid">
+                    <h2 class="title">Настройки системы</h2>
+                    
+                    <!-- Вкладки настроек -->
+                    <div class="tabs is-boxed mb-0">
+                        <ul>
+                            <li id="tab-administrative" class="is-active" onclick="switchTab('administrative-tab')">
+                                <a>
+                                    <span class="icon is-small"><i class="fas fa-cogs"></i></span>
+                                    <span>Административные</span>
+                                </a>
+                            </li>
+                            <li id="tab-norms" onclick="switchTab('norms-tab')">
+                                <a>
+                                    <span class="icon is-small"><i class="fas fa-sliders-h"></i></span>
+                                    <span>Нормы</span>
+                                </a>
+                            </li>
+                            <li id="tab-formulas" onclick="switchTab('formulas-tab')">
+                                <a>
+                                    <span class="icon is-small"><i class="fas fa-calculator"></i></span>
+                                    <span>Формулы</span>
+                                </a>
+                            </li>
+                            <li id="tab-order-points" onclick="switchTab('order-points-tab')">
+                                <a>
+                                    <span class="icon is-small"><i class="fas fa-list-ol"></i></span>
+                                    <span>Пункты приказа</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Содержимое вкладок -->
+                    <div class="box tab-content">
+                        <!-- Административные настройки -->
+                        <div id="administrative-tab" class="tab-pane is-active">
+                            {% include "dashboard/partials/settings/administrative_tab.html" %}
+                        </div>
+                        
+                        <!-- Настройки норм -->
+                        <div id="norms-tab" class="tab-pane" style="display: none;">
+                            {% include "dashboard/partials/settings/norms_tab.html" %}
+                        </div>
+                        
+                        <!-- Настройки формул -->
+                        <div id="formulas-tab" class="tab-pane" style="display: none;">
+                            {% include "dashboard/partials/settings/formulas_tab.html" %}
+                        </div>
+                        
+                        <!-- Настройки пунктов приказа -->
+                        <div id="order-points-tab" class="tab-pane" style="display: none;">
+                            {% include "dashboard/partials/settings/order_points_tab.html" %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна -->
+{% include "dashboard/partials/settings/norms_modals.html" %}
+
+<!-- Индикатор загрузки -->
+<div id="loading-indicator" class="htmx-indicator has-text-centered my-5">
+    <span class="icon is-large">
+        <i class="fas fa-spinner fa-pulse fa-2x"></i>
+    </span>
+    <p class="mt-2">Загрузка данных...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

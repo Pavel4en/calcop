@@ -79,18 +79,65 @@ class StudyPlan:
     @staticmethod
     def process_plan_data(plan_data: List[Tuple]) -> List[Tuple]:
         """
-        Обработка данных учебного плана:
-        1. Переименование вида работ "ЗЕТ" в "Руководство (ЗЕТ)" или "Руководство проектной деятельности"
-        2. Создание фиктивных строк для "Руководство (в рамках ГИА)" для магистров
+        Обработка данных учебного плана: применение всех необходимых трансформаций
+        """
+        # Сначала переименовываем виды работ
+        plan_data = StudyPlan.rename_work_types(plan_data)
+        
+        # Затем добавляем фиктивные строки для ГИА магистров
+        plan_data = StudyPlan.add_fake_gia_rows(plan_data)
+        
+        # Удаляем строки "Руководство (в рамках ГИА)" и "Рецензирование" для госэкзаменов
+        plan_data = StudyPlan.remove_gia_rows_for_state_exams(plan_data)
+        
+        return plan_data
+    
+    @staticmethod
+    def remove_gia_rows_for_state_exams(plan_data: List[Tuple]) -> List[Tuple]:
+        """
+        Удаление строк с видами работ "Руководство (в рамках ГИА)" и "Рецензирование"
+        для дисциплин, содержащих "государственного экзамена"
+        
+        Args:
+            plan_data: Исходные данные учебного плана
+                
+        Returns:
+            Данные учебного плана без строк ГИА для госэкзаменов
+        """
+        # Индексы колонок
+        discipline_index = 1      # Дисциплина
+        work_type_index = 2       # ВидРаботы
+        
+        # Отфильтрованный список строк
+        filtered_data = []
+        
+        for row in plan_data:
+            discipline_name = str(row[discipline_index]).lower()
+            work_type = str(row[work_type_index])
+            
+            # Проверяем, содержит ли название дисциплины "государственного экзамена"
+            if "государственного экзамена" in discipline_name:
+                # Если да, пропускаем строки с указанными видами работ
+                if work_type in ["Руководство (в рамках ГИА)", "Рецензирование"]:
+                    continue
+            
+            # Добавляем все остальные строки в результат
+            filtered_data.append(row)
+        
+        return filtered_data
+        
+    @staticmethod
+    def rename_work_types(plan_data: List[Tuple]) -> List[Tuple]:
+        """
+        Переименование видов работ "ЗЕТ" в "Руководство (ЗЕТ)" или "Руководство проектной деятельности"
         
         Args:
             plan_data: Исходные данные учебного плана
             
         Returns:
-            Обработанные данные учебного плана
+            Обработанные данные учебного плана с переименованными видами работ
         """
         processed_data = []
-        gia_rows_to_add = []
         
         for row in plan_data:
             # Преобразуем кортеж в список для возможности изменения
@@ -99,44 +146,201 @@ class StudyPlan:
             # Индексы колонок
             discipline_index = 1  # Дисциплина
             work_type_index = 2  # ВидРаботы
-            course_index = 3  # Курс
-            semester_index = 4  # Семестр
-            hours_index = 5  # Часы
-            discipline_code_index = 0  # ИндексДисциплины
-            qualification_index = 8  # Квалификация
             
-            # 2) Переименование вида работ "ЗЕТ"
+            # Переименование вида работ "ЗЕТ"
             if row_list[work_type_index] == "ЗЕТ":
                 if row_list[discipline_index] == "Проектная деятельность":
                     row_list[work_type_index] = "Руководство проектной деятельности"
                 else:
                     row_list[work_type_index] = "Руководство (ЗЕТ)"
             
-            # 3) Добавление фиктивных строк для ГИА магистров
-            if (row_list[qualification_index] == "магистр" and 
+            # Добавляем обработанную строку в результат
+            processed_data.append(tuple(row_list))
+            
+        return processed_data
+        
+    @staticmethod
+    def add_fake_gia_rows(plan_data: List[Tuple]) -> List[Tuple]:
+        """
+        Добавление фиктивных строк для ГИА и рецензирования,
+        а также удаление ненужных строк для бакалавров
+        
+        Args:
+            plan_data: Исходные данные учебного плана
+            
+        Returns:
+            Обработанные данные учебного плана с добавленными фиктивными строками
+        """
+        processed_data = []
+        gia_rows_to_add = []
+        
+        # Индексы колонок
+        discipline_code_index = 0  # ИндексДисциплины
+        discipline_index = 1      # Дисциплина
+        work_type_index = 2       # ВидРаботы
+        course_index = 3          # Курс
+        semester_index = 4        # Семестр
+        hours_index = 5           # Часы
+        qualification_index = 8   # Квалификация
+        
+        # Для проверки существующих строк
+        existing_rows = set()
+        
+        # Наполняем множество существующих строк
+        for row in plan_data:
+            # Создаем уникальный ключ для проверки (дисциплина, курс, семестр, вид работы)
+            key = (
+                row[discipline_code_index], 
+                row[course_index], 
+                row[semester_index], 
+                row[work_type_index]
+            )
+            existing_rows.add(key)
+        
+        # Фильтруем строки, удаляя "Рецензирование" для бакалавров
+        filtered_data = []
+        for row in plan_data:
+            qualification_lower = str(row[qualification_index]).lower()
+            
+            # Проверяем, является ли это строкой "Рецензирование" для бакалавра, которую нужно удалить
+            if (qualification_lower == "бакалавр" and 
+                row[work_type_index] == "Рецензирование" and
+                row[discipline_code_index].startswith("Б3") and
+                (row[course_index] == 4 or row[course_index] == 5)):
+                # Пропускаем эту строку (не добавляем в filtered_data)
+                continue
+                
+            # Добавляем остальные строки
+            filtered_data.append(row)
+        
+        # Заменяем plan_data на filtered_data для дальнейшей обработки
+        plan_data = filtered_data
+        
+        for row in plan_data:
+            # Преобразуем кортеж в список для возможности изменения
+            row_list = list(row)
+            
+            # Получаем значение квалификации в нижнем регистре для регистронезависимого сравнения
+            qualification_lower = str(row_list[qualification_index]).lower()
+            
+            # Проверка для магистров
+            if (qualification_lower == "магистр" and 
                 row_list[course_index] == 2 and
                 row_list[semester_index] == 4 and
-                row_list[discipline_code_index].startswith("Б3") and
-                row_list[work_type_index] == "Руководство (в рамках ГИА)"):
+                row_list[discipline_code_index].startswith("Б3")):
                 
-                # Добавляем фиктивные строки для семестров 1, 2, 3
-                for sem in range(1, 4):
-                    # Создаем копию текущей строки
-                    fake_row = row_list.copy()
-                    # Меняем семестр на текущий семестр цикла
-                    calc_course = (sem - 1) // 2 + 1
-                    fake_row[course_index] = calc_course  # Курс
-                    fake_row[semester_index] = sem  # Семестр
-                    fake_row[hours_index] = 1  # Часы = 1
-                    gia_rows_to_add.append(tuple(fake_row))
+                # Добавляем фиктивные строки для семестров 1, 2, 3 для "Руководство (в рамках ГИА)"
+                if row_list[work_type_index] == "Руководство (в рамках ГИА)":
+                    for sem in range(1, 4):
+                        # Создаем копию текущей строки
+                        fake_row = row_list.copy()
+                        # Меняем семестр на текущий семестр цикла
+                        calc_course = (sem - 1) // 2 + 1
+                        fake_row[course_index] = calc_course  # Курс
+                        fake_row[semester_index] = sem  # Семестр
+                        fake_row[hours_index] = 1  # Часы = 1
+                        
+                        # Проверяем, не существует ли уже такая строка
+                        key = (fake_row[discipline_code_index], fake_row[course_index], 
+                            fake_row[semester_index], fake_row[work_type_index])
+                        if key not in existing_rows:
+                            gia_rows_to_add.append(tuple(fake_row))
+                            existing_rows.add(key)
+                
+                # Добавляем строку "Рецензирование" с часами 0
+                key = (row_list[discipline_code_index], 2, 4, "Рецензирование")
+                if key not in existing_rows:
+                    review_row = row_list.copy()
+                    review_row[work_type_index] = "Рецензирование"
+                    review_row[hours_index] = 0
+                    gia_rows_to_add.append(tuple(review_row))
+                    existing_rows.add(key)
+                
+            # Проверка для бакалавров
+            elif (qualification_lower == "бакалавр"):
+                # Для 4 курса, 8 семестра
+                if (row_list[course_index] == 4 and
+                    row_list[semester_index] == 8 and
+                    row_list[discipline_code_index].startswith("Б3")):
+                    
+                    # Добавляем "Руководство (в рамках ГИА)" с часами 1
+                    key = (row_list[discipline_code_index], 4, 8, "Руководство (в рамках ГИА)")
+                    if key not in existing_rows:
+                        gia_row = row_list.copy()
+                        gia_row[work_type_index] = "Руководство (в рамках ГИА)"
+                        gia_row[hours_index] = 1
+                        gia_rows_to_add.append(tuple(gia_row))
+                        existing_rows.add(key)
+                
+                # Для 5 курса, 10 семестра (если есть)
+                elif (row_list[course_index] == 5 and
+                    row_list[semester_index] == 10 and
+                    row_list[discipline_code_index].startswith("Б3")):
+                    
+                    # Добавляем "Руководство (в рамках ГИА)" с часами 1
+                    key = (row_list[discipline_code_index], 5, 10, "Руководство (в рамках ГИА)")
+                    if key not in existing_rows:
+                        gia_row = row_list.copy()
+                        gia_row[work_type_index] = "Руководство (в рамках ГИА)"
+                        gia_row[hours_index] = 1
+                        gia_rows_to_add.append(tuple(gia_row))
+                        existing_rows.add(key)
             
-            # Добавляем исходную строку в обработанные данные
+            # Проверка для остальных (не магистр и не бакалавр)
+            elif (qualification_lower != "магистр" and qualification_lower != "бакалавр"):
+                # Для 5 курса, 10 семестра
+                if (row_list[course_index] == 5 and
+                    row_list[semester_index] == 10 and
+                    row_list[discipline_code_index].startswith("Б3")):
+                    
+                    # Добавляем "Руководство (в рамках ГИА)" с часами 1
+                    key = (row_list[discipline_code_index], 5, 10, "Руководство (в рамках ГИА)")
+                    if key not in existing_rows:
+                        gia_row = row_list.copy()
+                        gia_row[work_type_index] = "Руководство (в рамках ГИА)"
+                        gia_row[hours_index] = 1
+                        gia_rows_to_add.append(tuple(gia_row))
+                        existing_rows.add(key)
+                    
+                    # Добавляем "Рецензирование" с часами 0
+                    key = (row_list[discipline_code_index], 5, 10, "Рецензирование")
+                    if key not in existing_rows:
+                        review_row = row_list.copy()
+                        review_row[work_type_index] = "Рецензирование"
+                        review_row[hours_index] = 0
+                        gia_rows_to_add.append(tuple(review_row))
+                        existing_rows.add(key)
+                
+                # Для 6 курса, 12 семестра
+                elif (row_list[course_index] == 6 and
+                    row_list[semester_index] == 12 and
+                    row_list[discipline_code_index].startswith("Б3")):
+                    
+                    # Добавляем "Руководство (в рамках ГИА)" с часами 1
+                    key = (row_list[discipline_code_index], 6, 12, "Руководство (в рамках ГИА)")
+                    if key not in existing_rows:
+                        gia_row = row_list.copy()
+                        gia_row[work_type_index] = "Руководство (в рамках ГИА)"
+                        gia_row[hours_index] = 1
+                        gia_rows_to_add.append(tuple(gia_row))
+                        existing_rows.add(key)
+                    
+                    # Добавляем "Рецензирование" с часами 0
+                    key = (row_list[discipline_code_index], 6, 12, "Рецензирование")
+                    if key not in existing_rows:
+                        review_row = row_list.copy()
+                        review_row[work_type_index] = "Рецензирование"
+                        review_row[hours_index] = 0
+                        gia_rows_to_add.append(tuple(review_row))
+                        existing_rows.add(key)
+            
+            # Добавляем исходную строку в результат
             processed_data.append(tuple(row_list))
         
-        # Добавляем фиктивные строки в результирующий список
+        # Добавляем фиктивные строки
         processed_data.extend(gia_rows_to_add)
         
-        # Сортируем данные по ИндексДисциплины, Курсу, Семестру и ВидуРаботы
+        # Сортируем результат
         processed_data.sort(key=lambda x: (x[0], x[3], x[4], x[2]))
         
         return processed_data

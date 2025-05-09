@@ -73,14 +73,20 @@
   box-shadow: 0 4px 15px rgba(10, 10, 10, 0.15), 0 0 0 1px rgba(10, 10, 10, 0.1);
 }
 
+/* Стили для таблицы и горизонтального скролла */
 .table-container {
   overflow-x: auto;
   max-width: 100%;
+  position: relative;
+  margin-bottom: 2rem;
+  /* Убираем ограничение по высоте и вертикальный скролл */
+  overflow-y: visible;
 }
 
 /* Стили для таблицы учебного плана */
 #study-plan-table {
   font-size: 0.9rem;
+  width: 100%;
 }
 
 #study-plan-table thead th {
@@ -101,6 +107,12 @@
 
 #study-plan-table td {
   vertical-align: middle;
+  min-width: 80px; /* Минимальная ширина ячейки для улучшения читаемости */
+}
+
+/* Стили для специального чекбокса "Непосредственно с участием ППС" */
+.with-ppe-checkbox {
+  margin-right: 0.5rem;
 }
 
 /* Стили для формы сведений о программе */
@@ -137,96 +149,135 @@
 /* Стили для мобильной версии */
 @media screen and (max-width: 768px) {
   .sidebar {
-      display: none;
+    display: none;
   }
   
   .sidebar.is-active {
-      display: block;
+    display: block;
+  }
+  
+  /* Уменьшаем размер шрифта в таблице */
+  #study-plan-table {
+    font-size: 0.8rem;
+  }
+  
+  /* Уменьшаем отступы в ячейках */
+  #study-plan-table td, 
+  #study-plan-table th {
+    padding: 0.25rem 0.5rem;
+  }
+  
+  /* Уменьшаем размер полей ввода */
+  #study-plan-table input.input.is-small {
+    height: 1.75rem;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.3rem;
+  }
+  
+  /* Уменьшаем минимальную ширину ячеек */
+  #study-plan-table td {
+    min-width: 60px;
+  }
+}
+
+/* Для совсем маленьких экранов */
+@media screen and (max-width: 480px) {
+  #study-plan-table {
+    font-size: 0.7rem;
+  }
+  
+  #study-plan-table td, 
+  #study-plan-table th {
+    padding: 0.2rem 0.3rem;
+  }
+  
+  #study-plan-table td {
+    min-width: 50px;
   }
 }
 
 /* Стили для тултипов */
 .tooltip-container {
-    position: relative;
-    display: inline-block;
-    margin-left: 5px;
-    cursor: help;
+  position: relative;
+  display: inline-block;
+  margin-left: 5px;
+  cursor: help;
 }
 
 .tooltip-icon {
-    background-color: #f14668;
-    color: white;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
+  background-color: #f14668;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
 }
 
 .tooltip-content {
-    display: none;
-    width: 280px;
-    background-color: #363636;
-    color: #fff;
-    text-align: left;
-    border-radius: 6px;
-    padding: 10px 15px;
-    position: absolute;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 0.95rem;
-    line-height: 1.5;
-    pointer-events: none;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -140px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    overflow: hidden;
+  display: none;
+  width: 280px;
+  background-color: #363636;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 10px 15px;
+  position: absolute;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  pointer-events: none;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -140px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  overflow: hidden;
 }
 
 .tooltip-content::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #363636 transparent transparent transparent;
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #363636 transparent transparent transparent;
 }
 
 /* Особые стили для тултипов в заголовках таблицы */
 th .tooltip-container .tooltip-content {
-    bottom: auto;
-    top: 125%;
-    left: 0;
-    margin-left: 0;
+  bottom: auto;
+  top: 125%;
+  left: 0;
+  margin-left: 0;
 }
 
 th .tooltip-container .tooltip-content::after {
-    top: auto;
-    bottom: 100%;
-    left: 10%;
-    border-color: transparent transparent #363636 transparent;
+  top: auto;
+  bottom: 100%;
+  left: 10%;
+  border-color: transparent transparent #363636 transparent;
 }
 
 /* Для тултипов в правой части таблицы */
 th:nth-child(n+7) .tooltip-container .tooltip-content {
-    left: auto;
-    right: 0;
+  left: auto;
+  right: 0;
 }
 
 th:nth-child(n+7) .tooltip-container .tooltip-content::after {
-    left: auto;
-    right: 10%;
+  left: auto;
+  right: 10%;
 }
 
 .tooltip-container:hover .tooltip-content {
-    display: block;
-    opacity: 1;
+  display: block;
+  opacity: 1;
 }

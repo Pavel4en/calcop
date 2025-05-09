@@ -1,0 +1,60 @@
+<!-- Модальное окно для добавления/редактирования нормы -->
+<div class="modal" id="norm-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title" id="norm-modal-title">Добавление нормы</p>
+            <button class="delete" aria-label="close" id="close-norm-modal" onclick="closeNormModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            <form id="norm-form">
+                <input type="hidden" id="norm-id">
+                
+                <div class="field">
+                    <label class="label">Название нормы</label>
+                    <div class="control">
+                        <input type="text" class="input" id="norm-name" required>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Значение</label>
+                    <div class="control">
+                        <input type="number" class="input" id="norm-value" step="0.01" min="0" required>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="checkbox">
+                        <input type="checkbox" id="norm-locked">
+                        Заблокировать изменение значения
+                    </label>
+                </div>
+            </form>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-success" id="save-norm-button" onclick="saveNorm()">Сохранить</button>
+            <button class="button" id="cancel-norm-button" onclick="closeNormModal()">Отмена</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal" id="confirm-delete-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Подтверждение удаления</p>
+            <button class="delete" aria-label="close" id="close-confirm-modal" onclick="closeConfirmModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            <p>Вы действительно хотите удалить норму <strong id="delete-norm-name"></strong>?</p>
+            <p class="has-text-danger">Это действие невозможно отменить.</p>
+            <input type="hidden" id="delete-norm-id">
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-danger" id="confirm-delete-button" onclick="deleteNorm()">Удалить</button>
+            <button class="button" id="cancel-delete-button" onclick="closeConfirmModal()">Отмена</button>
+        </footer>
+    </div>
+</div>

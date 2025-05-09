@@ -44,7 +44,7 @@
                     <li><a class="is-active" href="#" data-section="Расчет нагрузки">Расчет нагрузки</a></li>
                     <li><a href="#" data-section="Инструкция">Инструкция</a></li>
                     {% if user.is_admin %}
-                    <li><a href="{{ url_for('main.settings') }}" data-section="Настройки">Настройки</a></li>
+                    <li><a href="{{ url_for('settings.index') }}" data-section="Настройки">Настройки</a></li>
                     {% endif %}
                 </ul>
             </aside>
@@ -54,7 +54,6 @@
         <div class="column content-area" id="main-content">
             <div class="section">
                 <div class="container is-fluid">
-                    <h2 class="title">Расчет нагрузки</h2>
                     
                     <!-- Форма расчета нагрузки -->
                     <div class="box">
@@ -167,9 +166,9 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Кнопка -->
-                                <div class="column is-3">
-                                    <div class="field">
+                                <!-- Кнопки -->
+                                <div class="column is-12">
+                                    <div class="field is-grouped">
                                         <div class="control">
                                             <button type="button" class="button is-primary"
                                                     hx-get="/load_study_plan"
@@ -180,6 +179,17 @@
                                                     <i class="fas fa-upload"></i>
                                                 </span>
                                                 <span>Загрузить данные</span>
+                                            </button>
+                                        </div>
+                                        <div class="control">
+                                            <button type="button" class="button is-info" id="norms-button"
+                                                    hx-get="/get_norms"
+                                                    hx-target="#norms-modal-content"
+                                                    hx-indicator="#loading-indicator">
+                                                <span class="icon">
+                                                    <i class="fas fa-sliders-h"></i>
+                                                </span>
+                                                <span>Нормы</span>
                                             </button>
                                         </div>
                                     </div>
@@ -201,6 +211,24 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Модальное окно для норм -->
+<div class="modal" id="norms-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Настройка норм расчета нагрузки</p>
+            <button class="delete" aria-label="close" id="close-norms-modal"></button>
+        </header>
+        <section class="modal-card-body" id="norms-modal-content">
+            <!-- Содержимое будет загружено через HTMX -->
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-success" id="save-norms">Применить</button>
+            <button class="button" id="cancel-norms">Отмена</button>
+        </footer>
     </div>
 </div>
 {% endblock %}
@@ -263,6 +291,107 @@
                     burgerButton.classList.remove('is-active');
                 }
             });
+        });
+        
+        // Обработчики для модального окна норм
+        const normsModal = document.getElementById('norms-modal');
+        const normsButton = document.getElementById('norms-button');
+        const closeNormsModal = document.getElementById('close-norms-modal');
+        const cancelNorms = document.getElementById('cancel-norms');
+        const saveNorms = document.getElementById('save-norms');
+
+        // Хранилище текущих значений норм
+        let currentNormValues = {};
+        // Флаг, указывающий, были ли когда-либо сохранены значения
+        let hasAppliedValues = false;
+
+        // Открытие модального окна
+        normsButton.addEventListener('click', () => {
+            normsModal.classList.add('is-active');
+            
+            // После загрузки норм через HTMX, сохраняем исходные значения
+            setTimeout(() => {
+                const normInputs = document.querySelectorAll('.norm-input');
+                normInputs.forEach(input => {
+                    const normId = input.dataset.id;
+                    
+                    // Если у нас уже есть сохраненное значение для этой нормы, используем его
+                    if (hasAppliedValues && currentNormValues[normId] !== undefined) {
+                        input.value = currentNormValues[normId];
+                    } else if (!hasAppliedValues) {
+                        // Только при первом открытии сохраняем исходные значения из БД
+                        currentNormValues[normId] = input.value;
+                    }
+                });
+            }, 500); // Даем время на загрузку данных через HTMX
+        });
+
+        // Закрытие модального окна
+        function closeModal() {
+            normsModal.classList.remove('is-active');
+        }
+
+        closeNormsModal.addEventListener('click', closeModal);
+
+        // Обработка кнопки "Отмена" - восстанавливаем последние примененные значения (если есть)
+        cancelNorms.addEventListener('click', () => {
+            const normInputs = document.querySelectorAll('.norm-input');
+            
+            // Если были ранее сохраненные значения, восстанавливаем их
+            if (hasAppliedValues) {
+                normInputs.forEach(input => {
+                    const normId = input.dataset.id;
+                    if (currentNormValues[normId] !== undefined) {
+                        input.value = currentNormValues[normId];
+                    }
+                });
+            }
+            
+            closeModal();
+        });
+
+        // Обработка кнопки "Применить" - сохраняем текущие значения и закрываем модальное окно
+        saveNorms.addEventListener('click', () => {
+            // Сохраняем текущие значения из полей ввода
+            const normInputs = document.querySelectorAll('.norm-input');
+            normInputs.forEach(input => {
+                const normId = input.dataset.id;
+                currentNormValues[normId] = input.value;
+            });
+            
+            // Устанавливаем флаг, что значения были применены
+            hasAppliedValues = true;
+            
+            // Показываем уведомление об успешном применении
+            const flashMessages = document.getElementById('flash-messages');
+            
+            const message = document.createElement('div');
+            message.className = 'notification flash-message is-success';
+            message.setAttribute('data-autodismiss', '');
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete';
+            deleteButton.addEventListener('click', () => {
+                message.parentNode.removeChild(message);
+            });
+            
+            message.appendChild(deleteButton);
+            message.appendChild(document.createTextNode('Изменения применены'));
+            
+            flashMessages.appendChild(message);
+            
+            // Автоматическое исчезновение сообщения
+            setTimeout(() => {
+                message.style.opacity = '0';
+                setTimeout(() => {
+                    if (message.parentNode) {
+                        message.parentNode.removeChild(message);
+                    }
+                }, 500);
+            }, 3000);
+            
+            // Закрываем модальное окно
+            closeModal();
         });
     });
 </script>

@@ -1,0 +1,89 @@
+<!-- Форма с нормами -->
+<div class="content">
+    <p class="has-text-weight-bold">Настройка норм расчета учебной нагрузки</p>
+    <p class="is-size-7 mb-4">Значения, для которых установлена блокировка, нельзя редактировать</p>
+</div>
+
+<div class="norms-container">
+    {% if norms %}
+        <div class="columns is-multiline">
+            {% for norm in norms %}
+                <div class="column is-6">
+                    <div class="field norm-field">
+                        <div class="norm-label">
+                            <label class="label">
+                                {{ norm.name }}
+                                {% if norm.locked %}
+                                <span class="tag is-warning ml-2">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                </span>
+                                {% endif %}
+                            </label>
+                        </div>
+                        <div class="control">
+                            <input 
+                                type="number" 
+                                class="input norm-input" 
+                                value="{{ norm.value }}" 
+                                data-id="{{ norm.id }}"
+                                data-name="{{ norm.name }}"
+                                step="0.01" 
+                                min="0" 
+                                {% if norm.locked %}disabled{% endif %}
+                            >
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="notification is-warning">
+            <p>Нормы не найдены в базе данных.</p>
+            <p>Проверьте подключение к базе данных или убедитесь, что таблица НормыДВФУ содержит данные.</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .norms-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+    
+    /* Стилизация для заблокированных полей */
+    .input[disabled] {
+        background-color: #f5f5f5;
+        border-color: #dbdbdb;
+        color: #7a7a7a;
+        cursor: not-allowed;
+    }
+    
+    /* Подсветка тега "Заблокировано" */
+    .tag.is-warning {
+        font-size: 0.7rem;
+        height: 1.5em;
+        padding-left: 0.5em;
+        padding-right: 0.5em;
+    }
+    
+    /* Выравнивание полей норм */
+    .norm-field {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .norm-label {
+        min-height: 40px;
+        display: flex;
+        align-items: flex-start;
+    }
+    
+    /* Одинаковая высота для всех инпутов */
+    .norm-input {
+        height: 2.25rem !important;
+    }
+</style>

@@ -1,0 +1,510 @@
+{% extends "base.html" %}
+
+{% block title %}Результаты расчета нагрузки{% endblock %}
+
+{% block content %}
+<div class="container is-fluid p-0">
+    <!-- Навигационная панель -->
+    <nav class="navbar is-light" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <!-- Бургер-меню -->
+            <a role="button" class="navbar-item burger-menu-toggle ml-2" id="burger-menu-button">
+                <span class="icon">
+                    <i class="fas fa-bars"></i>
+                </span>
+            </a>
+            
+            <!-- Название раздела -->
+            <div class="navbar-item">
+                <h1 class="title is-5" id="section-title">Результаты расчета нагрузки</h1>
+            </div>
+        </div>
+
+        <div class="navbar-end">
+            <div class="navbar-item">
+                {{ user.full_name }}
+            </div>
+            <div class="navbar-item">
+                <a href="{{ url_for('auth.logout') }}" class="button is-light" title="Выйти">
+                    <span class="icon">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент с боковым меню -->
+    <div class="columns is-gapless" style="min-height: calc(100vh - 52px);">
+        <!-- Боковое меню (изначально скрыто) -->
+        <div class="column is-2 sidebar has-background-light" id="sidebar-menu" style="display: none;">
+            <aside class="menu p-4">
+                <p class="menu-label">Навигация</p>
+                <ul class="menu-list">
+                    <li><a class="is-active" href="{{ url_for('main.index') }}" data-section="Расчет нагрузки">Расчет нагрузки</a></li>
+                    <li><a href="#" data-section="Инструкция">Инструкция</a></li>
+                    {% if user.is_admin %}
+                    <li><a href="{{ url_for('settings.index') }}" data-section="Настройки">Настройки</a></li>
+                    {% endif %}
+                </ul>
+            </aside>
+        </div>
+        
+        <!-- Основное содержимое -->
+        <div class="column content-area" id="main-content">
+            <div class="section">
+                <div class="container is-fluid">
+                    <!-- Сведения о программе -->
+                    {% if program_info %}
+                    <div class="box mb-5 shadow">
+                        <h3 class="title is-4 has-text-primary mb-4">Сведения о программе</h3>
+                        
+                        <div class="columns is-multiline">
+                            <div class="column is-3">
+                                <div class="field">
+                                    <label class="label">Год реализации</label>
+                                    <div class="control">
+                                        <div class="program-info-value">{{ program_info.academic_year }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="column is-3">
+                                <div class="field">
+                                    <label class="label">Год набора</label>
+                                    <div class="control">
+                                        <div class="program-info-value">{{ program_info.admission_year }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="column is-3">
+                                <div class="field">
+                                    <label class="label">Код специальности</label>
+                                    <div class="control">
+                                        <div class="program-info-value">{{ program_info.specialty_code }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="column is-3">
+                                <div class="field">
+                                    <label class="label">Форма обучения</label>
+                                    <div class="control">
+                                        <div class="program-info-value">{{ program_info.education_form }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="column is-6">
+                                <div class="field">
+                                    <label class="label">Направление подготовки</label>
+                                    <div class="control">
+                                        <div class="program-info-value">{{ program_info.specialty }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="column is-3">
+                                <div class="field">
+                                    <label class="label">Квалификация</label>
+                                    <div class="control">
+                                        <div class="program-info-value">{{ program_info.qualification }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="column is-3">
+                                <div class="field">
+                                    <label class="label">Расчетный контингент</label>
+                                    <div class="control">
+                                        <div class="program-info-value">{{ contingent }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Итоговые результаты расчета в панелях -->
+                    <div class="columns is-multiline mb-5">
+                        <div class="column is-12">
+                            <h3 class="title is-4 has-text-primary mb-4">Результаты расчета нагрузки</h3>
+                        </div>
+                        
+                        <div class="column is-one-fifth">
+                            <div class="card shadow">
+                                <div class="card-content has-text-centered">
+                                    <p class="heading">Норма на ставку</p>
+                                    <p class="title is-3">{{ workload_summary.norm_hours_per_position }}</p>
+                                    <p class="subtitle is-6">часов</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="column is-one-fifth">
+                            <div class="card shadow">
+                                <div class="card-content has-text-centered">
+                                    <p class="heading">Сумма нагрузки</p>
+                                    <p class="title is-3 has-text-primary">{{ workload_summary.total_workload }}</p>
+                                    <p class="subtitle is-6">часов</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="column is-one-fifth">
+                            <div class="card shadow">
+                                <div class="card-content has-text-centered">
+                                    <p class="heading">Количество ставок</p>
+                                    <p class="title is-3 has-text-primary">{{ workload_summary.calculated_positions }}</p>
+                                    <p class="subtitle is-6">единиц</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="column is-one-fifth">
+                            <div class="card shadow">
+                                <div class="card-content has-text-centered">
+                                    <p class="heading">Коэффициент затратности</p>
+                                    <p class="title is-3 has-text-primary">{{ workload_summary.cost_coefficient }}</p>
+                                    <p class="subtitle is-6">Контингент/ППС</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="column is-one-fifth">
+                            <div class="card shadow">
+                                <div class="card-content has-text-centered">
+                                    <p class="heading">Трудоемкость за курс</p>
+                                    <p class="title is-3 has-text-primary">{{ workload_summary.total_credits }}</p>
+                                    <p class="subtitle is-6">ЗЕТ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Форма с результатами расчета -->
+                    <form id="recalculation-form" action="{{ url_for('calculation.calculate_workload_route') }}" method="POST">
+                        <!-- Скрытые поля для параметров -->
+                        <input type="hidden" name="academic_year" value="{{ program_info.academic_year }}">
+                        <input type="hidden" name="admission_year" value="{{ program_info.admission_year }}">
+                        <input type="hidden" name="plan_file" value="{{ request.form.get('plan_file') }}">
+                        <input type="hidden" name="show_all_disciplines" value="{{ request.form.get('show_all_disciplines', '0') }}">
+                        <input type="hidden" name="contingent" value="{{ contingent }}">
+                        <input type="hidden" name="course" value="{{ request.form.get('course', '') }}">
+                        
+                        <!-- Скрытые поля для локальных значений норм -->
+                        {% for key, value in request.form.items() %}
+                            {% if key.startswith('norm_') %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <!-- Таблица с результатами расчета -->
+                        <div class="box shadow">
+                            <h3 class="title is-4 has-text-primary mb-4">Детализация расчета нагрузки</h3>
+                            
+                            <div class="table-container">
+                                <table id="study-plan-table" class="table is-bordered is-striped is-hoverable is-fullwidth">
+                                    <thead>
+                                        <tr>
+                                            <th>Учитывать</th>
+                                            <th>Индекс</th>
+                                            <th>Дисциплина</th>
+                                            <th>Курс</th>
+                                            <th>Сем.</th>
+                                            <th>Вид работы</th>
+                                            <th>Часы</th>
+                                            <th>Недели</th>
+                                            <th>Кафедра</th>
+                                            <th>Контингент</th>
+                                            <th>Поток</th>
+                                            <th>Подгр.</th>
+                                            <th>Нагрузка</th>
+                                            <th>Пункт</th>
+                                            <th>Комментарии</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in calculated_data %}
+                                            {% set row_id = row['Индекс дисциплины']|string + '_' + row['Вид работы']|string + '_' + row['Семестр']|string %}
+                                            <tr {% if not row['Учитывать'] %}class="has-background-grey-lighter"{% endif %}>
+                                                <td class="has-text-centered">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" class="consider-checkbox" name="consider_{{ row_id }}" 
+                                                               {% if row['Учитывать'] %}checked{% endif %}
+                                                               onchange="updateCommentsField(this)">
+                                                    </label>
+                                                </td>
+                                                <td>{{ row['Индекс дисциплины'] }}</td>
+                                                <td>
+                                                    {{ row['Дисциплина'] }}
+                                                    {% if row['Индекс дисциплины']|string|truncate(2, True, '') == 'Б2' and row['Недели']|int > 0 %}
+                                                        <hr class="my-2" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                                                        <label class="checkbox">
+                                                            <input type="checkbox" class="with-ppe-checkbox" name="with_ppe_{{ row_id }}"
+                                                                   {% if row['С непосредственным участием ППС'] == 'on' %}checked{% endif %}>
+                                                            <span>С участием ППС</span>
+                                                        </label>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ row['Курс'] }}</td>
+                                                <td>{{ row['Семестр'] }}</td>
+                                                <td>{{ row['Вид работы'] }}</td>
+                                                <td>{{ row['Часы'] }}</td>
+                                                <td>{{ row['Недели'] }}</td>
+                                                <td>{{ row['Название кафедры'] }}</td>
+                                                <td>
+                                                    <input type="number" class="input is-small" name="contingent_{{ row_id }}" 
+                                                           value="{{ row['Контингент по дисциплине'] }}" min="1">
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="input is-small" name="stream_{{ row_id }}" 
+                                                           value="{{ row['Численность потока'] }}" min="1">
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="input is-small" name="subgroups_{{ row_id }}" 
+                                                           value="{{ row['Количество подгрупп'] }}" min="1">
+                                                </td>
+                                                <td class="has-text-weight-bold {% if row['Нагрузка'] > 0 %}has-text-primary{% endif %}">
+                                                    {{ row['Нагрузка'] }}
+                                                </td>
+                                                <td>{{ row['Пункт приказа'] }}</td>
+                                                <td>
+                                                    <input type="text" class="input is-small comment-field" name="comment_{{ row_id }}"
+                                                           value="{{ row.get('Комментарии', '') }}"
+                                                           {% if not row['Учитывать'] %}readonly{% endif %}>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="has-background-primary-light">
+                                            <td colspan="12" class="has-text-right has-text-weight-bold">Итого:</td>
+                                            <td class="has-text-weight-bold">{{ workload_summary.total_workload }}</td>
+                                            <td colspan="2"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            
+                            <!-- Кнопки действий -->
+                            <div class="field is-grouped mt-5">
+                                <div class="control">
+                                    <button type="submit" class="button is-primary is-medium">
+                                        <span class="icon">
+                                            <i class="fas fa-calculator"></i>
+                                        </span>
+                                        <span>Пересчитать нагрузку</span>
+                                    </button>
+                                </div>
+                                <div class="control">
+                                    <a href="{{ url_for('main.index') }}" class="button is-light is-medium">
+                                        <span class="icon">
+                                            <i class="fas fa-arrow-left"></i>
+                                        </span>
+                                        <span>Вернуться назад</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Обработчик для бургер-меню
+        const burgerButton = document.getElementById('burger-menu-button');
+        const sidebar = document.getElementById('sidebar-menu');
+        const mainContent = document.getElementById('main-content');
+        
+        burgerButton.addEventListener('click', () => {
+            if (sidebar.style.display === 'none' || sidebar.style.width === '0px') {
+                // Плавное открытие
+                sidebar.style.display = 'block';
+                sidebar.style.width = '0px';
+                setTimeout(() => {
+                    sidebar.style.width = '250px';
+                }, 10);
+                
+                mainContent.classList.remove('is-12');
+                mainContent.classList.add('is-10');
+                burgerButton.classList.add('is-active');
+            } else {
+                // Плавное закрытие
+                sidebar.style.width = '0px';
+                setTimeout(() => {
+                    sidebar.style.display = 'none';
+                }, 300); // Должно совпадать с transition в CSS
+                
+                mainContent.classList.remove('is-10');
+                mainContent.classList.add('is-12');
+                burgerButton.classList.remove('is-active');
+            }
+        });
+        
+        // Обновление заголовка секции при клике на пункт меню
+        const menuItems = document.querySelectorAll('.menu-list a');
+        const sectionTitle = document.getElementById('section-title');
+        
+        menuItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                menuItems.forEach(i => i.classList.remove('is-active'));
+                this.classList.add('is-active');
+                
+                // Обновляем заголовок секции
+                if (this.hasAttribute('data-section')) {
+                    sectionTitle.textContent = this.getAttribute('data-section');
+                }
+                
+                // Если это не переход на другую страницу, то отменяем стандартное поведение
+                if (!this.hasAttribute('href') || this.getAttribute('href') === '#') {
+                    e.preventDefault();
+                }
+                
+                // На мобильных устройствах автоматически скрываем меню после выбора
+                if (window.innerWidth < 769) {
+                    sidebar.style.display = 'none';
+                    burgerButton.classList.remove('is-active');
+                }
+            });
+        });
+        
+        // Функция для обновления поля комментариев при изменении чекбокса
+        window.updateCommentsField = function(checkbox) {
+            const row = checkbox.closest('tr');
+            const commentField = row.querySelector('.comment-field');
+            
+            if (!checkbox.checked) {
+                commentField.value = "Не участвует в расчете нагрузки";
+                commentField.setAttribute('readonly', 'readonly');
+                row.classList.add('has-background-grey-lighter');
+            } else {
+                if (commentField.value === "Не участвует в расчете нагрузки") {
+                    commentField.value = "";
+                }
+                commentField.removeAttribute('readonly');
+                row.classList.remove('has-background-grey-lighter');
+            }
+        };
+    });
+</script>
+{% endblock %}
+
+{% block head %}
+<style>
+    /* Стили для боксов и карточек */
+    .shadow {
+        box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
+        transition: box-shadow 0.3s ease;
+    }
+    
+    .shadow:hover {
+        box-shadow: 0 0.5em 1.5em -0.125em rgba(10, 10, 10, 0.15), 0 0 0 1px rgba(10, 10, 10, 0.05);
+    }
+    
+    /* Стили для блока сведений о программе */
+    .program-info-value {
+        padding: 0.75rem;
+        border-radius: 4px;
+        background-color: #f5f5f5;
+        border: 1px solid #efefef;
+        font-weight: 500;
+    }
+    
+    /* Стили для карточек итогов */
+    .card {
+        height: 100%;
+        border-radius: 6px;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5em 2em -0.125em rgba(10, 10, 10, 0.2), 0 0 0 1px rgba(10, 10, 10, 0.05);
+    }
+    
+    .card .heading {
+        color: #7a7a7a;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+    }
+    
+    .card .title {
+        margin-bottom: 0.25rem;
+    }
+    
+    .card .subtitle {
+        opacity: 0.8;
+    }
+    
+    /* Стили для таблицы */
+    #study-plan-table {
+        font-size: 0.9rem;
+        width: 100%;
+    }
+
+    #study-plan-table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f5f5f5;
+        z-index: 10;
+        white-space: nowrap;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 0.85rem;
+        padding: 0.5rem;
+    }
+
+    #study-plan-table input.input.is-small {
+        height: 2rem;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    #study-plan-table td {
+        vertical-align: middle;
+        min-width: 80px; /* Минимальная ширина ячейки для улучшения читаемости */
+        font-size: 0.9rem;
+        padding: 0.5rem;
+    }
+    
+    /* Стили для кнопок */
+    .button.is-medium {
+        font-weight: 500;
+    }
+    
+    /* Мобильные стили */
+    @media screen and (max-width: 768px) {
+        .column.is-one-fifth {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        
+        #study-plan-table {
+            font-size: 0.8rem;
+        }
+        
+        #study-plan-table td, 
+        #study-plan-table th {
+            padding: 0.25rem 0.5rem;
+        }
+        
+        #study-plan-table input.input.is-small {
+            height: 1.75rem;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.3rem;
+        }
+    }
+</style>
+{% endblock %}

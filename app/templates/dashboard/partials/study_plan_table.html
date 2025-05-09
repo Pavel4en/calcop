@@ -64,110 +64,164 @@
                     <p>{{ program_info.education_form }}</p>
                 </div>
             </div>
+            <!-- Добавляем расчетный контингент -->
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label">Расчетный контингент</label>
+                    <p>{{ contingent }}</p>
+                </div>
+            </div>
         </div>
     </div>
     {% endif %}
 
     <h3 class="title is-4 mt-5">Данные учебного плана</h3>
     
-    <div class="table-container">
-        <table id="study-plan-table" class="table is-bordered is-striped is-hoverable is-fullwidth">
-            <thead>
-                <tr>
-                    {% for col in display_columns %}
-                        <th>
-                            {{ col }}
-                            {% if col == 'Учитывать' %}
-                                <div class="tooltip-container">
-                                    <div class="tooltip-icon">
-                                        <i class="fas fa-exclamation"></i>
-                                    </div>
-                                    <div class="tooltip-content">
-                                        По умолчанию все дисциплины участвуют в расчете нагрузки, если дисциплину нужно исключить, то снимите галочки
-                                    </div>
-                                </div>
-                            {% elif col == 'Недели' %}
-                                <div class="tooltip-container">
-                                    <div class="tooltip-icon">
-                                        <i class="fas fa-exclamation"></i>
-                                    </div>
-                                    <div class="tooltip-content">
-                                        Недели нужны для расчета нагрузки по практикам, у которых есть статус "Непосредственно с участием ППС"
-                                    </div>
-                                </div>
-                            {% elif col == 'Контингент по дисциплине' %}
-                                <div class="tooltip-container">
-                                    <div class="tooltip-icon">
-                                        <i class="fas fa-exclamation"></i>
-                                    </div>
-                                    <div class="tooltip-content">
-                                        Необходимо указать количество студентов, для которого реализуется образовательная активность.
-                                    </div>
-                                </div>
-                            {% elif col == 'Численность потока' %}
-                                <div class="tooltip-container">
-                                    <div class="tooltip-icon">
-                                        <i class="fas fa-exclamation"></i>
-                                    </div>
-                                    <div class="tooltip-content">
-                                        Необходимо указать общую численность потока, в котором реализуется образовательная активность. Численность потока должна быть больше численности группы. Нагрузка рассчитывается пропорционально доли численности студентов группы в указанной численности потока.
-                                    </div>
-                                </div>
-                            {% elif col == 'Количество подгрупп' %}
-                                <div class="tooltip-container">
-                                    <div class="tooltip-icon">
-                                        <i class="fas fa-exclamation"></i>
-                                    </div>
-                                    <div class="tooltip-content">
-                                        Необходимо указать количество подгрупп, на которые разделяется группа в рамках образовательной активности. Нагрузка рассчитывается на каждую подгруппу
-                                    </div>
-                                </div>
-                            {% endif %}
-                        </th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in plan_data %}
+    <form id="calculation-form" action="{{ url_for('calculation.calculate_workload_route') }}" method="POST">
+        <!-- Скрытые поля для параметров -->
+        <input type="hidden" name="academic_year" value="{{ request.args.get('academic_year') }}">
+        <input type="hidden" name="admission_year" value="{{ request.args.get('admission_year') }}">
+        <input type="hidden" name="plan_file" value="{{ request.args.get('plan_file') }}">
+        <input type="hidden" name="show_all_disciplines" value="{{ request.args.get('show_all_disciplines', '0') }}">
+        <input type="hidden" name="contingent" value="{{ contingent }}">
+        <input type="hidden" name="course" value="{{ request.args.get('course', '') }}">
+        
+        <!-- Добавляем скрытые поля для локальных значений норм -->
+        <div id="norms-values-container"></div>
+        
+        <div class="table-container">
+            <table id="study-plan-table" class="table is-bordered is-striped is-hoverable is-fullwidth">
+                <thead>
                     <tr>
-                        <!-- Учитывать (чекбокс) -->
-                        <td class="has-text-centered">
-                            <label class="checkbox">
-                                <input type="checkbox" class="consider-checkbox" checked onchange="updateCommentsField(this)">
-                            </label>
-                        </td>
-                        
-                        <!-- Данные из базы -->
-                        {% for col in display_columns[1:9] %}
-                            {% if col in column_indices %}
-                                <td>{{ row[column_indices[col]]|default('') }}</td>
-                            {% endif %}
+                        {% for col in display_columns %}
+                            <th>
+                                {{ col }}
+                                {% if col in tooltip_columns %}
+                                <div class="tooltip-container">
+                                    <div class="tooltip-icon">
+                                        <i class="fas fa-exclamation"></i>
+                                    </div>
+                                    <div class="tooltip-content">
+                                        {% if col == 'Учитывать' %}
+                                        По умолчанию все дисциплины участвуют в расчете нагрузки, если дисциплину нужно исключить, то снимите галочки
+                                        {% elif col == 'Недели' %}
+                                        Недели нужны для расчета нагрузки по практикам, у которых есть статус "Непосредственно с участием ППС"
+                                        {% elif col == 'Контингент по дисциплине' %}
+                                        Необходимо указать количество студентов, для которого реализуется образовательная активность.
+                                        {% elif col == 'Численность потока' %}
+                                        Необходимо указать общую численность потока, в котором реализуется образовательная активность. Численность потока должна быть больше численности группы. Нагрузка рассчитывается пропорционально доли численности студентов группы в указанной численности потока.
+                                        {% elif col == 'Количество подгрупп' %}
+                                        Необходимо указать количество подгрупп, на которые разделяется группа в рамках образовательной активности. Нагрузка рассчитывается на каждую подгруппу
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </th>
                         {% endfor %}
-                        
-                        <!-- Контингент по дисциплине -->
-                        <td>
-                            <input type="number" class="input is-small" value="{{ contingent }}" min="1">
-                        </td>
-                        
-                        <!-- Численность потока -->
-                        <td>
-                            <input type="number" class="input is-small" value="{{ contingent }}" min="1">
-                        </td>
-                        
-                        <!-- Количество подгрупп -->
-                        <td>
-                            <input type="number" class="input is-small" value="1" min="1">
-                        </td>
-                        
-                        <!-- Комментарии -->
-                        <td>
-                            <input type="text" class="input is-small comment-field">
-                        </td>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    {% for row in plan_data %}
+                        {% set row_id = row[column_indices['ИндексДисциплины']]|string + '_' + row[column_indices['ВидРаботы']]|string + '_' + row[column_indices['Семестр']]|string %}
+                        <tr>
+                            <!-- Учитывать (чекбокс) -->
+                            <td class="has-text-centered">
+                                <label class="checkbox">
+                                    <input type="checkbox" class="consider-checkbox" name="consider_{{ row_id }}" checked onchange="updateCommentsField(this)">
+                                </label>
+                            </td>
+                            
+                            <!-- ИндексДисциплины -->
+                            <td>{{ row[column_indices['ИндексДисциплины']]|default('') }}</td>
+                            
+                            <!-- Дисциплина -->
+                            <td>
+                                {{ row[column_indices['Дисциплина']]|default('') }}
+                                
+                                <!-- Добавляем специальный чекбокс для практик (Б2) с неделями -->
+                                {% if row[column_indices['ИндексДисциплины']]|default('')|string|truncate(2, True, '') == 'Б2' and row[column_indices['Недели']]|default(0)|int > 0 %}
+                                    <hr class="my-2" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                                    <label class="checkbox">
+                                        <input type="checkbox" class="with-ppe-checkbox" name="with_ppe_{{ row_id }}">
+                                        <span>Непосредственно с участием ППС</span>
+                                        <div class="tooltip-container">
+                                            <div class="tooltip-icon">
+                                                <i class="fas fa-exclamation"></i>
+                                            </div>
+                                            <div class="tooltip-content">
+                                                Если данный параметр включен, то расчет будет происходить по пункту 4.4 6 часов на 1 рабочий день
+                                            </div>
+                                        </div>
+                                    </label>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- Курс -->
+                            <td>{{ row[column_indices['Курс']]|default('') }}</td>
+                            
+                            <!-- Семестр -->
+                            <td>{{ row[column_indices['Семестр']]|default('') }}</td>
+                            
+                            <!-- ВидРаботы -->
+                            <td>{{ row[column_indices['ВидРаботы']]|default('') }}</td>
+                            
+                            <!-- Часы -->
+                            <td>{{ row[column_indices['Часы']]|default('') }}</td>
+                            
+                            <!-- Недели -->
+                            <td>{{ row[column_indices['Недели']]|default('') }}</td>
+                            
+                            <!-- НазваниеКафедры -->
+                            <td>{{ row[column_indices['НазваниеКафедры']]|default('') }}</td>
+                            
+                            <!-- Контингент по дисциплине -->
+                            <td>
+                                <input type="number" class="input is-small" name="contingent_{{ row_id }}" value="{{ contingent }}" min="1">
+                            </td>
+                            
+                            <!-- Численность потока -->
+                            <td>
+                                <input type="number" class="input is-small" name="stream_{{ row_id }}" value="{{ contingent }}" min="1">
+                            </td>
+                            
+                            <!-- Количество подгрупп -->
+                            <td>
+                                <input type="number" class="input is-small" name="subgroups_{{ row_id }}" value="1" min="1">
+                            </td>
+                            
+                            <!-- Комментарии -->
+                            <td>
+                                <input type="text" class="input is-small comment-field" name="comment_{{ row_id }}">
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Кнопки действий -->
+        <div class="field is-grouped mt-5">
+            <div class="control">
+                <button type="button" class="button is-info" id="norms-button"
+                        hx-get="/get_norms"
+                        hx-target="#norms-modal-content"
+                        hx-indicator="#loading-indicator">
+                    <span class="icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </span>
+                    <span>Нормы</span>
+                </button>
+            </div>
+            <div class="control">
+                <button type="submit" class="button is-primary">
+                    <span class="icon">
+                        <i class="fas fa-calculator"></i>
+                    </span>
+                    <span>Рассчитать нагрузку</span>
+                </button>
+            </div>
+        </div>
+    </form>
 
     <script>
         // Функция для обновления поля комментариев при изменении чекбокса
@@ -185,6 +239,47 @@
                 commentField.removeAttribute('readonly');
             }
         }
+        
+        // Функция для добавления значений норм из модального окна в форму расчета
+        function addNormInputsToForm() {
+            const normsContainer = document.getElementById('norms-values-container');
+            normsContainer.innerHTML = ''; // Очищаем контейнер
+            
+            // Получаем все инпуты норм из модального окна
+            const normInputs = document.querySelectorAll('.norm-input');
+            
+            normInputs.forEach(input => {
+                const normId = input.dataset.id;
+                const normValue = input.value;
+                
+                // Создаем скрытый инпут для каждой нормы
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = `norm_${normId}`;
+                hiddenInput.value = normValue;
+                
+                normsContainer.appendChild(hiddenInput);
+            });
+        }
+        
+        // Перехватываем отправку формы, чтобы добавить значения норм
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('calculation-form');
+            
+            form.addEventListener('submit', function(e) {
+                // Добавляем значения норм в форму перед отправкой
+                addNormInputsToForm();
+            });
+            
+            // Обновляем функцию сохранения норм
+            const saveNormsButton = document.getElementById('save-norms');
+            if (saveNormsButton) {
+                saveNormsButton.addEventListener('click', function() {
+                    // Добавляем значения норм в форму при сохранении
+                    addNormInputsToForm();
+                });
+            }
+        });
     </script>
 {% else %}
     <div class="notification is-warning mt-5">
