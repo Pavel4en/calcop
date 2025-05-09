@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, session
 from app.controllers.auth_controller import admin_required
 from app.models.formulas import Formula
+from app.services.formula_executor import FormulaExecutor
+import json
 
 formulas_bp = Blueprint('formulas', __name__, url_prefix='/formulas')
 
@@ -42,12 +44,15 @@ def create_formula_api():
     formula = data.get('formula')
     order_point = data.get('order_point')
     comment = data.get('comment')
+    selection_condition = data.get('selection_condition')
     
     if not name or not condition_code or not condition or not formula:
         return jsonify({'error': 'Не указаны обязательные параметры'}), 400
     
     try:
-        formula_id = Formula.create_formula(name, condition_code, condition, formula, order_point, comment)
+        formula_id = Formula.create_formula(
+            name, condition_code, condition, formula, order_point, comment, selection_condition
+        )
         return jsonify({'id': formula_id, 'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -66,10 +71,11 @@ def update_formula_api(formula_id):
     formula = data.get('formula')
     order_point = data.get('order_point')
     comment = data.get('comment')
+    selection_condition = data.get('selection_condition')
     
     try:
         success = Formula.update_formula(
-            formula_id, name, condition_code, condition, formula, order_point, comment
+            formula_id, name, condition_code, condition, formula, order_point, comment, selection_condition
         )
         if not success:
             return jsonify({'error': 'Формула не найдена'}), 404
@@ -86,5 +92,58 @@ def delete_formula_api(formula_id):
         if not success:
             return jsonify({'error': 'Формула не найдена'}), 404
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@formulas_bp.route('/api/test-formula', methods=['POST'])
+@admin_required
+def test_formula_api():
+    """API для тестирования формулы на конкретных данных"""
+    if not request.is_json:
+        return jsonify({'error': 'Неверный формат данных'}), 400
+        
+    data = request.json
+    formula = data.get('formula')
+    test_data = data.get('test_data')
+    norms_data = data.get('norms_data', {})
+    
+    if not formula or not test_data:
+        return jsonify({'error': 'Не указаны обязательные параметры'}), 400
+    
+    try:
+        # Преобразование строки JSON в словарь
+        if isinstance(test_data, str):
+            test_data = json.loads(test_data)
+        if isinstance(norms_data, str):
+            norms_data = json.loads(norms_data)
+            
+        # Выполнение формулы
+        result = FormulaExecutor._execute_formula(formula, test_data, norms_data)
+        return jsonify({'result': result, 'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@formulas_bp.route('/api/test-condition', methods=['POST'])
+@admin_required
+def test_condition_api():
+    """API для тестирования условия выбора формулы на конкретных данных"""
+    if not request.is_json:
+        return jsonify({'error': 'Неверный формат данных'}), 400
+        
+    data = request.json
+    condition = data.get('condition')
+    test_data = data.get('test_data')
+    
+    if not condition or not test_data:
+        return jsonify({'error': 'Не указаны обязательные параметры'}), 400
+    
+    try:
+        # Преобразование строки JSON в словарь
+        if isinstance(test_data, str):
+            test_data = json.loads(test_data)
+            
+        # Выполнение условия
+        result = FormulaExecutor._evaluate_selection_condition(test_data, condition)
+        return jsonify({'result': result, 'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500

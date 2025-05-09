@@ -54,133 +54,155 @@
         <div class="column content-area" id="main-content">
             <div class="section">
                 <div class="container is-fluid">
-                    <!-- Сведения о программе -->
-                    {% if program_info %}
-                    <div class="box mb-5 shadow">
-                        <h3 class="title is-4 has-text-primary mb-4">Сведения о программе</h3>
-                        
-                        <div class="columns is-multiline">
-                            <div class="column is-3">
-                                <div class="field">
-                                    <label class="label">Год реализации</label>
-                                    <div class="control">
-                                        <div class="program-info-value">{{ program_info.academic_year }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="column is-3">
-                                <div class="field">
-                                    <label class="label">Год набора</label>
-                                    <div class="control">
-                                        <div class="program-info-value">{{ program_info.admission_year }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="column is-3">
-                                <div class="field">
-                                    <label class="label">Код специальности</label>
-                                    <div class="control">
-                                        <div class="program-info-value">{{ program_info.specialty_code }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="column is-3">
-                                <div class="field">
-                                    <label class="label">Форма обучения</label>
-                                    <div class="control">
-                                        <div class="program-info-value">{{ program_info.education_form }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="column is-6">
-                                <div class="field">
-                                    <label class="label">Направление подготовки</label>
-                                    <div class="control">
-                                        <div class="program-info-value">{{ program_info.specialty }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="column is-3">
-                                <div class="field">
-                                    <label class="label">Квалификация</label>
-                                    <div class="control">
-                                        <div class="program-info-value">{{ program_info.qualification }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="column is-3">
-                                <div class="field">
-                                    <label class="label">Расчетный контингент</label>
-                                    <div class="control">
-                                        <div class="program-info-value">{{ contingent }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+<!-- Сведения о программе -->
+{% if program_info %}
+<div class="box mb-5 shadow">
+    <h3 class="title is-4 has-text-primary mb-4">Сведения о программе</h3>
+    
+    <div class="columns is-multiline">
+        <div class="column is-3">
+            <div class="field">
+                <label class="label">Год реализации</label>
+                <div class="control">
+                    <div class="program-info-value">{{ program_info.academic_year }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column is-3">
+            <div class="field">
+                <label class="label">Год набора</label>
+                <div class="control">
+                    <div class="program-info-value">{{ program_info.admission_year }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column is-3">
+            <div class="field">
+                <label class="label">Код специальности</label>
+                <div class="control">
+                    <div class="program-info-value">{{ program_info.specialty_code }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column is-3">
+            <div class="field">
+                <label class="label">Форма обучения</label>
+                <div class="control">
+                    <div class="program-info-value">{{ program_info.education_form }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column is-6">
+            <div class="field">
+                <label class="label">Направление подготовки</label>
+                <div class="control">
+                    <div class="program-info-value">{{ program_info.specialty }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column is-6">
+            <div class="field">
+                <label class="label">Профиль</label>
+                <div class="control">
+                    <div class="program-info-value">{{ program_info.profile }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column is-3">
+            <div class="field">
+                <label class="label">Квалификация</label>
+                <div class="control">
+                    <div class="program-info-value">{{ program_info.qualification }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column is-3">
+            <div class="field">
+                <label class="label">Расчетный контингент</label>
+                <div class="control">
+                    <div class="program-info-value">{{ contingent }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                     
-                    <!-- Итоговые результаты расчета в панелях -->
-                    <div class="columns is-multiline mb-5">
-                        <div class="column is-12">
-                            <h3 class="title is-4 has-text-primary mb-4">Результаты расчета нагрузки</h3>
+<!-- Итоговые результаты расчета в панелях -->
+<div class="columns is-multiline mb-5">
+    <div class="column is-12">
+        <h3 class="title is-4 has-text-primary mb-4">Результаты расчета нагрузки</h3>
+    </div>
+    
+    <div class="column is-one-fifth">
+        <div class="card shadow">
+            <div class="card-content has-text-centered">
+                <p class="heading">Норма на ставку</p>
+                <p class="title is-3">{{ workload_summary.norm_hours_per_position }}</p>
+                <p class="subtitle is-6">часов</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="column is-one-fifth">
+        <div class="card shadow">
+            <div class="card-content has-text-centered">
+                <p class="heading">Сумма нагрузки</p>
+                <p class="title is-3 has-text-primary">{{ workload_summary.total_workload }}</p>
+                <p class="subtitle is-6">часов</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="column is-one-fifth">
+        <div class="card shadow">
+            <div class="card-content has-text-centered">
+                <p class="heading">Количество ставок</p>
+                <p class="title is-3 has-text-primary">{{ workload_summary.calculated_positions }}</p>
+                <p class="subtitle is-6">единиц</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="column is-one-fifth">
+        <div class="card shadow">
+            <div class="card-content has-text-centered">
+                <p class="heading">Коэффициент затратности</p>
+                <p class="title is-3 has-text-primary">{{ workload_summary.cost_coefficient }}</p>
+                <p class="subtitle is-6">Контингент/ППС</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="column is-one-fifth">
+        <div class="card shadow">
+            <div class="card-content has-text-centered">
+                <p class="heading">Трудоемкость
+                    {% if workload_summary.zet_hours_warning %}
+                    <div class="tooltip-container">
+                        <div class="tooltip-icon">
+                            <i class="fas fa-exclamation"></i>
                         </div>
-                        
-                        <div class="column is-one-fifth">
-                            <div class="card shadow">
-                                <div class="card-content has-text-centered">
-                                    <p class="heading">Норма на ставку</p>
-                                    <p class="title is-3">{{ workload_summary.norm_hours_per_position }}</p>
-                                    <p class="subtitle is-6">часов</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="column is-one-fifth">
-                            <div class="card shadow">
-                                <div class="card-content has-text-centered">
-                                    <p class="heading">Сумма нагрузки</p>
-                                    <p class="title is-3 has-text-primary">{{ workload_summary.total_workload }}</p>
-                                    <p class="subtitle is-6">часов</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="column is-one-fifth">
-                            <div class="card shadow">
-                                <div class="card-content has-text-centered">
-                                    <p class="heading">Количество ставок</p>
-                                    <p class="title is-3 has-text-primary">{{ workload_summary.calculated_positions }}</p>
-                                    <p class="subtitle is-6">единиц</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="column is-one-fifth">
-                            <div class="card shadow">
-                                <div class="card-content has-text-centered">
-                                    <p class="heading">Коэффициент затратности</p>
-                                    <p class="title is-3 has-text-primary">{{ workload_summary.cost_coefficient }}</p>
-                                    <p class="subtitle is-6">Контингент/ППС</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="column is-one-fifth">
-                            <div class="card shadow">
-                                <div class="card-content has-text-centered">
-                                    <p class="heading">Трудоемкость за курс</p>
-                                    <p class="title is-3 has-text-primary">{{ workload_summary.total_credits }}</p>
-                                    <p class="subtitle is-6">ЗЕТ</p>
-                                </div>
-                            </div>
+                        <div class="tooltip-content">
+                            Сумма часов по "Руководство (ЗЕТ)" превышает 60 часов. Рекомендуемое значение: не более 60 часов.
                         </div>
                     </div>
+                    {% endif %}
+                </p>
+                <p class="title is-3 {% if workload_summary.zet_hours_warning %}has-text-danger{% else %}has-text-primary{% endif %}">
+                    {{ workload_summary.total_zet_hours }}
+                </p>
+                <p class="subtitle is-6">часов ЗЕТ</p>
+            </div>
+        </div>
+    </div>
+</div>
                     {% endif %}
                     
                     <!-- Форма с результатами расчета -->

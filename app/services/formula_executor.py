@@ -18,13 +18,12 @@ class FormulaExecutor:
         Returns:
             str: Номер пункта приказа
         """
-        # Определяем код условия для данной строки
-        condition_code = FormulaExecutor._get_condition_code(row)
+        # Определяем формулу для данной строки
+        matching_formula = FormulaExecutor._find_matching_formula(row, formulas)
         
-        # Ищем формулу с соответствующим кодом условия
-        for formula in formulas:
-            if formula['condition_code'] == condition_code:
-                return formula.get('order_point', '')
+        # Если найдена формула, возвращаем пункт приказа
+        if matching_formula:
+            return matching_formula.get('order_point', '')
         
         return ''
     
@@ -41,115 +40,72 @@ class FormulaExecutor:
         Returns:
             float: Рассчитанная нагрузка
         """
-        # Определяем код условия для данной строки
-        condition_code = FormulaExecutor._get_condition_code(row)
+        # Определяем формулу для данной строки
+        matching_formula = FormulaExecutor._find_matching_formula(row, formulas)
         
-        # Ищем формулу с соответствующим кодом условия
-        for formula in formulas:
-            if formula['condition_code'] == condition_code:
-                # Выполняем формулу расчета
-                try:
-                    result = FormulaExecutor._execute_formula(formula['formula'], row, norms)
-                    return round(result, 2)
-                except Exception as e:
-                    print(f"Ошибка выполнения формулы: {e}")
-                    return 0.0
+        # Если найдена формула, выполняем расчет
+        if matching_formula:
+            try:
+                result = FormulaExecutor._execute_formula(matching_formula['formula'], row, norms)
+                return round(result, 2)
+            except Exception as e:
+                print(f"Ошибка выполнения формулы: {e}")
+                return 0.0
         
         # Если формула не найдена, возвращаем 0
         return 0.0
     
     @staticmethod
-    def _get_condition_code(row: Dict[str, Any]) -> str:
+    def _find_matching_formula(row: Dict[str, Any], formulas: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
-        Определяет код условия для строки учебного плана
+        Находит подходящую формулу для строки учебного плана, используя условия выбора
         
         Args:
             row: Словарь с данными строки учебного плана
+            formulas: Список формул из базы данных
             
         Returns:
-            str: Код условия
+            Optional[Dict[str, Any]]: Формула или None, если не найдена
         """
-        # Проверяем различные условия и возвращаем соответствующий код
+        # Сначала проверяем формулы с условиями выбора
+        for formula in formulas:
+            selection_condition = formula.get('selection_condition')
+            if selection_condition and FormulaExecutor._evaluate_selection_condition(row, selection_condition):
+                return formula
         
-        # Лекции
-        if row['Вид работы'] == 'Лекционные занятия':
-            return 'lecture'
+        # Если не нашли подходящую формулу, возвращаем None
+        return None
+    
+    @staticmethod
+    def _evaluate_selection_condition(row: Dict[str, Any], selection_condition: str) -> bool:
+        """
+        Оценивает условие выбора для строки учебного плана
         
-        # Практические и лабораторные занятия по языкам и физ. культуре
-        elif row['Вид работы'] in ['Практические занятия', 'Лабораторные занятия']:
-            if row['Дисциплина'] in ['Иностранный язык', 'Элективные курсы по физической культуре и спорту', 'Физическая культура и спорт']:
-                return 'practice_lang_sport'
-            else:
-                return 'practice_lab'
+        Args:
+            row: Словарь с данными строки учебного плана
+            selection_condition: Строка с Python-выражением условия выбора
+            
+        Returns:
+            bool: True, если условие выполняется
+        """
+        if not selection_condition:
+            return False
         
-        # Экзамен
-        elif row['Вид работы'] == 'Экзамен' and (row['Индекс дисциплины'].startswith('Б1') or row['Индекс дисциплины'].startswith('ФТД')):
-            return 'exam'
-        
-        # Кураторство
-        elif row['Вид работы'] == 'Кураторство':
-            return 'curator'
-        
-        # Практики
-        elif row['Индекс дисциплины'].startswith('Б2') and row['Вид работы'] == 'Руководство (ЗЕТ)':
-            return 'practice_management'
-        elif row['Индекс дисциплины'].startswith('Б2') and row['Вид работы'] == 'Недели':
-            if re.search(r"07\.03\.01", row.get('Файл УП', '')):
-                return 'practice_weeks_architecture'
-            else:
-                return 'practice_weeks'
-        
-        # Проектная деятельность
-        elif row['Вид работы'] == 'Руководство проектной деятельности' and row['Дисциплина'] == 'Проектная деятельность':
-            return 'project_activity'
-        
-        # Зачет и зачет с оценкой
-        elif (row['Вид работы'] == 'Зачет' or row['Вид работы'] == 'Зачет с оценкой') and (row['Индекс дисциплины'].startswith('Б1') or row['Индекс дисциплины'].startswith('ФТД')):
-            if row['Дисциплина'] != 'Проектная деятельность':
-                return 'credit'
-        
-        # Письменные работы
-        elif row['Вид работы'] in ['Эссе', 'Тест', 'Реферат', 'Расчетно-графическая работа', 'Контрольная работа'] and row['Форма обучения'] == 'Очная форма':
-            return 'written_work'
-        
-        # Рецензирование ВКР
-        elif row['Вид работы'] == 'Рецензирование' and (row['Квалификация'].strip().lower() != 'бакалавр'):
-            return 'thesis_review'
-        
-        # Курсовая работа
-        elif row['Вид работы'] == 'Курсовая работа':
-            return 'course_work'
-        
-        # Курсовой проект
-        elif row['Вид работы'] == 'Курсовой проект':
-            return 'course_project'
-        
-        # ВКР бакалавр и специалитет
-        elif row['Вид работы'] == 'Руководство (в рамках ГИА)' and (row['Квалификация'].strip().lower() != 'магистр'):
-            return 'thesis_bachelor'
-        
-        # ВКР магистратура 1 курс
-        elif row['Вид работы'] == 'Руководство (в рамках ГИА)' and row['Курс'] == '1' and (row['Квалификация'].strip().lower() == 'магистр'):
-            return 'thesis_master_1'
-        
-        # ВКР магистратура 2 курс
-        elif row['Вид работы'] == 'Руководство (в рамках ГИА)' and row['Курс'] == '2' and (row['Квалификация'].strip().lower() == 'магистр'):
-            return 'thesis_master_2'
-        
-        # Государственный экзамен (ГИА)
-        elif row['Вид работы'] == 'Экзамен' and row['Индекс дисциплины'].startswith('Б3'):
-            if row['Квалификация'].strip().lower() == 'магистр':
-                if row['Форма обучения'] == 'Очная форма':
-                    return 'state_exam_master_full'
-                elif row['Форма обучения'] == 'Заочная форма':
-                    return 'state_exam_master_part'
-                elif row['Форма обучения'] == 'Очно-заочная форма':
-                    return 'state_exam_master_mixed'
-            else:
-                return 'state_exam_bachelor'
-        
-        # Если ни одно из условий не выполнено, возвращаем пустой код
-        return ''
+        try:
+            # Создаем безопасное пространство имен для выполнения условия
+            safe_vars = {
+                'row': row,
+                're': re
+            }
+            
+            # Выполняем условие
+            result = eval(selection_condition, {"__builtins__": {}}, safe_vars)
+            
+            # Преобразуем результат в булево значение
+            return bool(result)
+        except Exception as e:
+            print(f"Ошибка выполнения условия выбора '{selection_condition}': {e}")
+            return False
     
     @staticmethod
     def _execute_formula(formula_str: str, row: Dict[str, Any], norms: Dict[str, Any]) -> float:

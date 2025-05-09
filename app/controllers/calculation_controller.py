@@ -86,10 +86,11 @@ def calculate_workload_route():
     # Получаем все формулы из базы данных
     formulas = Formula.get_all_formulas()
     
-    # Подготавливаем данные для расчета и выполняем расчет
+# Подготавливаем данные для расчета и выполняем расчет
     calculated_data = []
     total_workload = 0
     total_credits = 0
+    total_zet_hours = 0  # Общая сумма часов по видам работ "Руководство (ЗЕТ)"
     
     for row in plan_data:
         # Преобразуем данные из кортежа в словарь для удобства
@@ -134,6 +135,12 @@ def calculate_workload_route():
             # Учитываем кредиты для дисциплин, а не для видов работ
             if row_dict['Вид работы'] in ['Лекционные занятия', 'Практические занятия', 'Лабораторные занятия']:
                 total_credits += float(row_dict['ЗЕТ']) if row_dict['ЗЕТ'] else 0
+                
+            # Суммируем часы по видам работ "Руководство (ЗЕТ)"
+            if row_dict['Вид работы'] == 'Руководство (ЗЕТ)':
+                hours = float(row_dict['Часы']) if row_dict['Часы'] else 0
+                total_zet_hours += hours
+                
         else:
             workload = 0
             order_point = ""
@@ -146,9 +153,12 @@ def calculate_workload_route():
         calculated_data.append(row_dict)
     
     # Рассчитываем итоговые показатели
-    norm_hours_per_position = float(norms.get('Норма часов на одну ставку ППС', 900))
+    norm_hours_per_position = float(norms.get('Норма времени на одну штатную единицу', 900))
     calculated_positions = round(total_workload / norm_hours_per_position, 2)
-    cost_coefficient = round(contingent / calculated_positions, 2) if calculated_positions > 0 else 0
+    cost_coefficient = round((contingent * norm_hours_per_position) / total_workload, 2) if total_workload > 0 else 0
+    
+    # Проверяем, превышает ли сумма часов по "Руководство (ЗЕТ)" 60 часов
+    zet_hours_warning = total_zet_hours > 60
     
     # Формируем данные для отображения
     workload_summary = {
@@ -156,7 +166,9 @@ def calculate_workload_route():
         'calculated_positions': calculated_positions,
         'cost_coefficient': cost_coefficient,
         'total_credits': round(total_credits, 2),
-        'norm_hours_per_position': norm_hours_per_position
+        'norm_hours_per_position': norm_hours_per_position,
+        'total_zet_hours': round(total_zet_hours, 2),
+        'zet_hours_warning': zet_hours_warning
     }
     
     # Список столбцов для отображения

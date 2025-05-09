@@ -25,6 +25,7 @@
                 <th>Название</th>
                 <th>Код условия</th>
                 <th>Условие</th>
+                <th>Условие выбора</th>
                 <th>Формула расчета</th>
                 <th>Пункт приказа</th>
                 <th>Действия</th>
@@ -33,7 +34,7 @@
         <tbody id="formulas-table-body">
             <!-- Данные будут загружены через AJAX -->
             <tr>
-                <td colspan="7" class="has-text-centered">
+                <td colspan="8" class="has-text-centered">
                     <div class="mt-4 mb-4">
                         <span class="icon is-large">
                             <i class="fas fa-spinner fa-pulse fa-2x"></i>
@@ -61,6 +62,13 @@
                     <li><code>row['Количество подгрупп']</code> - Количество подгрупп</li>
                     <li><code>row['Недели']</code> - Количество недель</li>
                     <li><code>row['ЗЕТ']</code> - Зачетные единицы трудоемкости</li>
+                    <li><code>row['Вид работы']</code> - Вид работы</li>
+                    <li><code>row['Дисциплина']</code> - Название дисциплины</li>
+                    <li><code>row['Индекс дисциплины']</code> - Индекс дисциплины</li>
+                    <li><code>row['Квалификация']</code> - Квалификация</li>
+                    <li><code>row['Форма обучения']</code> - Форма обучения</li>
+                    <li><code>row['Курс']</code> - Курс</li>
+                    <li><code>row['Семестр']</code> - Семестр</li>
                     <li><code>norms['Название нормы']</code> - Доступ к нормам по названию</li>
                 </ul>
             </div>
@@ -72,6 +80,7 @@
                     <li><strong>Условие</strong> - Описание условия применения формулы в текстовом виде</li>
                     <li><strong>Формула расчета</strong> - Формула на Python для расчета нагрузки</li>
                     <li><strong>Пункт приказа</strong> - Номер пункта приказа для отображения в отчетах</li>
+                    <li><strong>Условие выбора</strong> - Python-выражение, которое определяет, применима ли формула к данной строке учебного плана</li>
                 </ul>
             </div>
         </div>
@@ -80,6 +89,7 @@
             <p class="has-text-weight-semibold">Примечание:</p>
             <p>При написании формул используйте стандартный синтаксис Python. Для доступа к значениям используйте конструкцию <code>float(row['Название поля'])</code>.</p>
             <p>Для проверки условий с непосредственным участием ППС используйте <code>row.get('С непосредственным участием ППС') == 'on'</code>.</p>
+            <p>В условии выбора формулы можно использовать регулярные выражения: <code>re.search(r"07\.03\.01", row.get('Файл УП', ''))</code></p>
         </div>
     </div>
 </div>
@@ -112,7 +122,7 @@
                 </div>
                 
                 <div class="field">
-                    <label class="label">Условие</label>
+                    <label class="label">Условие (текстовое описание)</label>
                     <div class="control">
                         <textarea class="textarea" id="formula-condition" required></textarea>
                     </div>
@@ -120,11 +130,37 @@
                 </div>
                 
                 <div class="field">
-                    <label class="label">Формула расчета</label>
+                    <label class="label">Условие выбора формулы (Python-код)</label>
+                    <div class="control">
+                        <textarea class="textarea" id="formula-selection-condition"></textarea>
+                    </div>
+                    <p class="help">Python-выражение, определяющее применимость формулы к строке учебного плана</p>
+                </div>
+                
+                <div class="field">
+                    <button type="button" class="button is-small is-info" id="test-condition-button" onclick="openTestConditionModal()">
+                        <span class="icon">
+                            <i class="fas fa-flask"></i>
+                        </span>
+                        <span>Протестировать условие</span>
+                    </button>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Формула расчета (Python-код)</label>
                     <div class="control">
                         <textarea class="textarea" id="formula-calculation" required></textarea>
                     </div>
                     <p class="help">Формула для расчета нагрузки (например, float(row['Часы']) * float(row['Количество подгрупп']))</p>
+                </div>
+                
+                <div class="field">
+                    <button type="button" class="button is-small is-info" id="test-formula-button" onclick="openTestFormulaModal()">
+                        <span class="icon">
+                            <i class="fas fa-flask"></i>
+                        </span>
+                        <span>Протестировать формулу</span>
+                    </button>
                 </div>
                 
                 <div class="field">
@@ -146,6 +182,127 @@
         <footer class="modal-card-foot">
             <button class="button is-primary" id="save-formula-button" onclick="saveFormula()">Сохранить</button>
             <button class="button" id="cancel-formula-button" onclick="closeFormulaModal()">Отмена</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Модальное окно для тестирования условия выбора -->
+<div class="modal" id="test-condition-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Тестирование условия выбора</p>
+            <button class="delete" aria-label="close" onclick="closeTestConditionModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Тестовые данные (JSON)</label>
+                <div class="control">
+                    <textarea class="textarea" id="test-condition-data" rows="10">
+{
+    "Вид работы": "Лекционные занятия",
+    "Дисциплина": "Математика",
+    "Индекс дисциплины": "Б1.О.01",
+    "Квалификация": "бакалавр",
+    "Форма обучения": "Очная форма",
+    "Курс": "1",
+    "Семестр": "1",
+    "Часы": "36",
+    "Недели": "18",
+    "Контингент по дисциплине": "25",
+    "Численность потока": "25",
+    "Количество подгрупп": "1",
+    "Файл УП": "07.03.01_2022_О_1"
+}
+                    </textarea>
+                </div>
+                <p class="help">Введите тестовые данные в формате JSON для проверки условия</p>
+            </div>
+            
+            <div class="field">
+                <label class="label">Условие выбора</label>
+                <div class="control">
+                    <textarea class="textarea" id="test-condition-code" rows="5"></textarea>
+                </div>
+            </div>
+            
+            <div id="test-condition-result-container" class="is-hidden">
+                <div class="notification" id="test-condition-result">
+                    <!-- Здесь будет результат тестирования -->
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-primary" onclick="testCondition()">Проверить условие</button>
+            <button class="button" onclick="closeTestConditionModal()">Закрыть</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Модальное окно для тестирования формулы расчета -->
+<div class="modal" id="test-formula-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Тестирование формулы расчета</p>
+            <button class="delete" aria-label="close" onclick="closeTestFormulaModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Тестовые данные (JSON)</label>
+                <div class="control">
+                    <textarea class="textarea" id="test-formula-data" rows="10">
+{
+    "Вид работы": "Лекционные занятия",
+    "Дисциплина": "Математика",
+    "Индекс дисциплины": "Б1.О.01",
+    "Квалификация": "бакалавр",
+    "Форма обучения": "Очная форма",
+    "Курс": "1",
+    "Семестр": "1",
+    "Часы": "36",
+    "Недели": "18",
+    "Контингент по дисциплине": "25",
+    "Численность потока": "25",
+    "Количество подгрупп": "1",
+    "Файл УП": "07.03.01_2022_О_1"
+}
+                    </textarea>
+                </div>
+                <p class="help">Введите тестовые данные в формате JSON для проверки формулы</p>
+            </div>
+            
+            <div class="field">
+                <label class="label">Данные норм (JSON)</label>
+                <div class="control">
+                    <textarea class="textarea" id="test-formula-norms" rows="5">
+{
+    "Норма часов на одну ставку ППС": 900,
+    "Норма по консультациям для ИЯ, ЭФКС и ФКС": 0.15,
+    "Норма по консультациям кроме ИЯ, ЭФКС и ФКС": 0.1,
+    "Трудоемкость": 36
+}
+                    </textarea>
+                </div>
+                <p class="help">Введите данные норм в формате JSON для проверки формулы</p>
+            </div>
+            
+            <div class="field">
+                <label class="label">Формула расчета</label>
+                <div class="control">
+                    <textarea class="textarea" id="test-formula-code" rows="5"></textarea>
+                </div>
+            </div>
+            
+            <div id="test-formula-result-container" class="is-hidden">
+                <div class="notification" id="test-formula-result">
+                    <!-- Здесь будет результат тестирования -->
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-primary" onclick="testFormula()">Проверить формулу</button>
+            <button class="button" onclick="closeTestFormulaModal()">Закрыть</button>
         </footer>
     </div>
 </div>
@@ -196,6 +353,11 @@
         max-width: 800px;
         width: 95%;
     }
+    
+    /* Стили для текстового редактора */
+    .textarea {
+        font-family: monospace;
+    }
 </style>
 
 <!-- Скрипты для управления формулами -->
@@ -219,12 +381,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('tab-formulas').classList.contains('is-active')) {
         loadFormulas();
     }
+    
+    // Инициализация обработчиков для кнопок тестирования
+    document.getElementById('test-condition-button').onclick = function() {
+        openTestConditionModal();
+    };
+    
+    document.getElementById('test-formula-button').onclick = function() {
+        openTestFormulaModal();
+    };
 });
 
 // Функция загрузки формул
+// Функция загрузки формул
 function loadFormulas() {
     const tbody = document.getElementById('formulas-table-body');
-    tbody.innerHTML = '<tr><td colspan="7" class="has-text-centered"><div class="mt-4 mb-4"><span class="icon is-large"><i class="fas fa-spinner fa-pulse fa-2x"></i></span><p class="mt-2">Загрузка данных...</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="has-text-centered"><div class="mt-4 mb-4"><span class="icon is-large"><i class="fas fa-spinner fa-pulse fa-2x"></i></span><p class="mt-2">Загрузка данных...</p></div></td></tr>';
     
     // Выполняем GET-запрос на API
     fetch('/formulas/api/formulas')
@@ -239,7 +411,7 @@ function loadFormulas() {
             tbody.innerHTML = '';
             
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="has-text-centered">Нет данных</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="has-text-centered">Нет данных</td></tr>';
                 return;
             }
             
@@ -265,6 +437,15 @@ function loadFormulas() {
                 const tdCondition = document.createElement('td');
                 tdCondition.textContent = formula.condition;
                 tr.appendChild(tdCondition);
+                
+                // Условие выбора
+                const tdSelectionCondition = document.createElement('td');
+                if (formula.selection_condition) {
+                    tdSelectionCondition.innerHTML = `<code>${formula.selection_condition}</code>`;
+                } else {
+                    tdSelectionCondition.innerHTML = '<span class="has-text-grey-light">не указано</span>';
+                }
+                tr.appendChild(tdSelectionCondition);
                 
                 // Формула расчета
                 const tdFormula = document.createElement('td');
@@ -302,7 +483,7 @@ function loadFormulas() {
         })
         .catch(error => {
             console.error('Ошибка загрузки формул:', error);
-            tbody.innerHTML = '<tr><td colspan="7" class="has-text-centered has-text-danger">Ошибка загрузки данных</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="has-text-centered has-text-danger">Ошибка загрузки данных</td></tr>';
         });
 }
 
@@ -313,6 +494,7 @@ function openAddFormulaModal() {
     document.getElementById('formula-name').value = '';
     document.getElementById('formula-condition-code').value = '';
     document.getElementById('formula-condition').value = '';
+    document.getElementById('formula-selection-condition').value = '';
     document.getElementById('formula-calculation').value = '';
     document.getElementById('formula-order-point').value = '';
     document.getElementById('formula-comment').value = '';
@@ -329,6 +511,7 @@ function openEditFormulaModal(formula) {
     document.getElementById('formula-name').value = formula.name;
     document.getElementById('formula-condition-code').value = formula.condition_code;
     document.getElementById('formula-condition').value = formula.condition;
+    document.getElementById('formula-selection-condition').value = formula.selection_condition || '';
     document.getElementById('formula-calculation').value = formula.formula;
     document.getElementById('formula-order-point').value = formula.order_point || '';
     document.getElementById('formula-comment').value = formula.comment || '';
@@ -339,6 +522,166 @@ function openEditFormulaModal(formula) {
 // Закрытие модального окна формулы
 function closeFormulaModal() {
     document.getElementById('formula-modal').classList.remove('is-active');
+}
+
+// Открытие модального окна тестирования условия выбора
+function openTestConditionModal() {
+    const selectionCondition = document.getElementById('formula-selection-condition').value;
+    document.getElementById('test-condition-code').value = selectionCondition;
+    document.getElementById('test-condition-result-container').classList.add('is-hidden');
+    document.getElementById('test-condition-modal').classList.add('is-active');
+}
+
+// Закрытие модального окна тестирования условия выбора
+function closeTestConditionModal() {
+    document.getElementById('test-condition-modal').classList.remove('is-active');
+}
+
+// Тестирование условия выбора
+function testCondition() {
+    const condition = document.getElementById('test-condition-code').value;
+    let testData;
+    
+    // Парсим тестовые данные из JSON
+    try {
+        testData = JSON.parse(document.getElementById('test-condition-data').value);
+    } catch (e) {
+        alert('Ошибка при разборе JSON тестовых данных: ' + e.message);
+        return;
+    }
+    
+    // Отправляем запрос на API для тестирования условия
+    fetch('/formulas/api/test-condition', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            condition: condition,
+            test_data: testData
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`Error ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        const resultContainer = document.getElementById('test-condition-result-container');
+        const resultEl = document.getElementById('test-condition-result');
+        
+        resultContainer.classList.remove('is-hidden');
+        
+        if (data.success) {
+            resultEl.className = 'notification ' + (data.result ? 'is-success' : 'is-warning');
+            resultEl.innerHTML = `<p class="has-text-weight-bold">Результат: ${data.result ? 'ИСТИНА' : 'ЛОЖЬ'}</p>`;
+            resultEl.innerHTML += `<p>${data.result ? 'Условие выполняется для указанных данных' : 'Условие НЕ выполняется для указанных данных'}</p>`;
+            
+            // Если тест прошел успешно, обновляем значение условия в форме редактирования
+            if (document.getElementById('formula-selection-condition').value !== condition) {
+                document.getElementById('formula-selection-condition').value = condition;
+            }
+        } else {
+            resultEl.className = 'notification is-danger';
+            resultEl.innerHTML = `<p class="has-text-weight-bold">Ошибка при выполнении условия:</p><p>${data.error}</p>`;
+        }
+    })
+    .catch(error => {
+        const resultContainer = document.getElementById('test-condition-result-container');
+        const resultEl = document.getElementById('test-condition-result');
+        
+        resultContainer.classList.remove('is-hidden');
+        resultEl.className = 'notification is-danger';
+        resultEl.innerHTML = `<p class="has-text-weight-bold">Ошибка при тестировании:</p><p>${error.message}</p>`;
+    });
+}
+
+// Открытие модального окна тестирования формулы расчета
+function openTestFormulaModal() {
+    const formula = document.getElementById('formula-calculation').value;
+    document.getElementById('test-formula-code').value = formula;
+    document.getElementById('test-formula-result-container').classList.add('is-hidden');
+    document.getElementById('test-formula-modal').classList.add('is-active');
+}
+
+// Закрытие модального окна тестирования формулы расчета
+function closeTestFormulaModal() {
+    document.getElementById('test-formula-modal').classList.remove('is-active');
+}
+
+// Тестирование формулы расчета
+function testFormula() {
+    const formula = document.getElementById('test-formula-code').value;
+    let testData, normsData;
+    
+    // Парсим тестовые данные из JSON
+    try {
+        testData = JSON.parse(document.getElementById('test-formula-data').value);
+    } catch (e) {
+        alert('Ошибка при разборе JSON тестовых данных: ' + e.message);
+        return;
+    }
+    
+    // Парсим данные норм из JSON
+    try {
+        normsData = JSON.parse(document.getElementById('test-formula-norms').value);
+    } catch (e) {
+        alert('Ошибка при разборе JSON данных норм: ' + e.message);
+        return;
+    }
+    
+    // Отправляем запрос на API для тестирования формулы
+    fetch('/formulas/api/test-formula', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            formula: formula,
+            test_data: testData,
+            norms_data: normsData
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`Error ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        const resultContainer = document.getElementById('test-formula-result-container');
+        const resultEl = document.getElementById('test-formula-result');
+        
+        resultContainer.classList.remove('is-hidden');
+        
+        if (data.success) {
+            resultEl.className = 'notification is-success';
+            resultEl.innerHTML = `<p class="has-text-weight-bold">Результат расчета: ${data.result}</p>`;
+            
+            // Если тест прошел успешно, обновляем значение формулы в форме редактирования
+            if (document.getElementById('formula-calculation').value !== formula) {
+                document.getElementById('formula-calculation').value = formula;
+            }
+        } else {
+            resultEl.className = 'notification is-danger';
+            resultEl.innerHTML = `<p class="has-text-weight-bold">Ошибка при выполнении формулы:</p><p>${data.error}</p>`;
+        }
+    })
+    .catch(error => {
+        const resultContainer = document.getElementById('test-formula-result-container');
+        const resultEl = document.getElementById('test-formula-result');
+        
+        resultContainer.classList.remove('is-hidden');
+        resultEl.className = 'notification is-danger';
+        resultEl.innerHTML = `<p class="has-text-weight-bold">Ошибка при тестировании:</p><p>${error.message}</p>`;
+    });
 }
 
 // Сохранение формулы
@@ -354,6 +697,7 @@ function saveFormula() {
     const formulaName = document.getElementById('formula-name').value;
     const formulaConditionCode = document.getElementById('formula-condition-code').value;
     const formulaCondition = document.getElementById('formula-condition').value;
+    const formulaSelectionCondition = document.getElementById('formula-selection-condition').value;
     const formulaCalculation = document.getElementById('formula-calculation').value;
     const formulaOrderPoint = document.getElementById('formula-order-point').value;
     const formulaComment = document.getElementById('formula-comment').value;
@@ -362,6 +706,7 @@ function saveFormula() {
         name: formulaName,
         condition_code: formulaConditionCode,
         condition: formulaCondition,
+        selection_condition: formulaSelectionCondition,
         formula: formulaCalculation,
         order_point: formulaOrderPoint,
         comment: formulaComment

@@ -11,7 +11,8 @@ class Formula:
             List[Dict[str, Any]]: Список словарей с данными формул
         """
         query = """
-        SELECT ID, Название, КодУсловия, Условие, ФормулаРасчета, ПунктПриказа, Комментарий 
+        SELECT ID, Название, КодУсловия, Условие, ФормулаРасчета, ПунктПриказа, Комментарий, 
+               УсловиеВыбора 
         FROM Формулы 
         ORDER BY ID
         """
@@ -27,7 +28,8 @@ class Formula:
                 'condition': row[3],
                 'formula': row[4],
                 'order_point': row[5],
-                'comment': row[6]
+                'comment': row[6],
+                'selection_condition': row[7] if len(row) > 7 else None
             })
         
         return formulas_list
@@ -44,7 +46,8 @@ class Formula:
             Optional[Dict[str, Any]]: Словарь с данными формулы или None, если не найдена
         """
         query = """
-        SELECT ID, Название, КодУсловия, Условие, ФормулаРасчета, ПунктПриказа, Комментарий 
+        SELECT ID, Название, КодУсловия, Условие, ФормулаРасчета, ПунктПриказа, Комментарий,
+               УсловиеВыбора
         FROM Формулы 
         WHERE ID = ?
         """
@@ -60,12 +63,13 @@ class Formula:
             'condition': result[3],
             'formula': result[4],
             'order_point': result[5],
-            'comment': result[6]
+            'comment': result[6],
+            'selection_condition': result[7] if len(result) > 7 else None
         }
     
     @staticmethod
     def create_formula(name: str, condition_code: str, condition: str, formula: str, 
-                       order_point: str, comment: str = None) -> int:
+                       order_point: str, comment: str = None, selection_condition: str = None) -> int:
         """
         Создание новой формулы
         
@@ -76,16 +80,17 @@ class Formula:
             formula: Формула расчета
             order_point: Пункт приказа
             comment: Комментарий
+            selection_condition: Условие выбора формулы (Python-код)
             
         Returns:
             int: ID созданной формулы
         """
         try:
             query = """
-            INSERT INTO Формулы (Название, КодУсловия, Условие, ФормулаРасчета, ПунктПриказа, Комментарий)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO Формулы (Название, КодУсловия, Условие, ФормулаРасчета, ПунктПриказа, Комментарий, УсловиеВыбора)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """
-            execute_query(query, (name, condition_code, condition, formula, order_point, comment))
+            execute_query(query, (name, condition_code, condition, formula, order_point, comment, selection_condition))
             
             # Получение ID созданной формулы
             get_id_query = "SELECT @@IDENTITY"
@@ -99,7 +104,8 @@ class Formula:
     @staticmethod
     def update_formula(formula_id: int, name: Optional[str] = None, condition_code: Optional[str] = None, 
                        condition: Optional[str] = None, formula: Optional[str] = None,
-                       order_point: Optional[str] = None, comment: Optional[str] = None) -> bool:
+                       order_point: Optional[str] = None, comment: Optional[str] = None,
+                       selection_condition: Optional[str] = None) -> bool:
         """
         Обновление формулы
         
@@ -111,6 +117,7 @@ class Formula:
             formula: Новая формула расчета
             order_point: Новый пункт приказа
             comment: Новый комментарий
+            selection_condition: Новое условие выбора формулы (Python-код)
             
         Returns:
             bool: True, если обновление прошло успешно
@@ -150,6 +157,10 @@ class Formula:
             if comment is not None:
                 update_fields.append("Комментарий = ?")
                 params.append(comment)
+                
+            if selection_condition is not None:
+                update_fields.append("УсловиеВыбора = ?")
+                params.append(selection_condition)
             
             # Если нет параметров для обновления, возвращаем True
             if not update_fields:
