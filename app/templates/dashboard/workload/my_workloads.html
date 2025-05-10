@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}Мои расчеты нагрузки{% endblock %}
+
+{% block head %}
+<style>
+    .workload-card {
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .workload-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5em 1em rgba(10, 10, 10, 0.2);
+    }
+    
+    .workload-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        min-height: 3rem;
+    }
+    
+    .card-footer-item {
+        cursor: pointer;
+    }
+    
+    .workload-specialty {
+        color: #666;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        min-height: 2.8rem;
+    }
+    
+    .workload-details {
+        font-size: 0.85rem;
+        color: #777;
+    }
+    
+    .workload-details strong {
+        color: #363636;
+    }
+    
+    .no-workloads-message {
+        background-color: #f5f5f5;
+        border-radius: 6px;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .no-workloads-message .title {
+        margin-bottom: 1.5rem;
+    }
+    
+    .is-info {
+        color: #3e8ed0;
+    }
+    
+    .delete-confirm-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(10, 10, 10, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .delete-confirm-modal-backdrop.is-active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .delete-confirm-modal {
+        background-color: white;
+        border-radius: 6px;
+        max-width: 90%;
+        width: 400px;
+        padding: 1.5rem;
+        box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
+    }
+    
+    .delete-confirm-buttons {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+    }
+    
+    .delete-confirm-buttons .button:not(:last-child) {
+        margin-right: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container is-fluid p-0">
+    <!-- Навигационная панель -->
+    <nav class="navbar is-light" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <!-- Бургер-меню -->
+            <a role="button" class="navbar-item burger-menu-toggle ml-2" id="burger-menu-button">
+                <span class="icon">
+                    <i class="fas fa-bars"></i>
+                </span>
+            </a>
+            
+            <!-- Название раздела -->
+            <div class="navbar-item">
+                <h1 class="title is-5" id="section-title">Мои расчеты нагрузки</h1>
+            </div>
+        </div>
+
+        <div class="navbar-end">
+            <div class="navbar-item">
+                {{ user.full_name }}
+            </div>
+            <div class="navbar-item">
+                <a href="{{ url_for('auth.logout') }}" class="button is-light" title="Выйти">
+                    <span class="icon">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент с боковым меню -->
+    <div class="columns is-gapless" style="min-height: calc(100vh - 52px);">
+        <!-- Боковое меню (изначально скрыто) -->
+        <div class="column is-2 sidebar has-background-light" id="sidebar-menu" style="display: none;">
+            <aside class="menu p-4">
+                <p class="menu-label">Навигация</p>
+                <ul class="menu-list">
+                    <li><a href="{{ url_for('main.index') }}" data-section="Расчет нагрузки">Расчет нагрузки</a></li>
+                    <li><a href="#" id="instruction-link" data-section="Инструкция">Инструкция</a></li>
+                    <li><a href="#" id="telegram-link" data-section="Телеграм чат" target="_blank">Телеграм чат</a></li>
+                    <li><a class="is-active" href="{{ url_for('workload.my_workloads') }}" data-section="Мои расчеты">Мои расчеты</a></li>
+                    {% if user.is_admin %}
+                    <li><a href="{{ url_for('settings.index') }}" data-section="Настройки">Настройки</a></li>
+                    {% endif %}
+                </ul>
+            </aside>
+        </div>
+        
+        <!-- Основное содержимое -->
+        <div class="column content-area" id="main-content">
+            <div class="section">
+                <div class="container is-fluid">
+                    
+                    <!-- Заголовок страницы -->
+                    <div class="level mb-5">
+                        <div class="level-left">
+                            <h2 class="title is-4">Сохраненные расчеты нагрузки</h2>
+                        </div>
+                        <div class="level-right">
+                            <a href="{{ url_for('main.index') }}" class="button is-primary">
+                                <span class="icon">
+                                    <i class="fas fa-plus"></i>
+                                </span>
+                                <span>Новый расчет</span>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Список расчетов -->
+                    {% if workloads %}
+                    <div class="columns is-multiline">
+                        {% for workload in workloads %}
+                        <div class="column is-4">
+                            <div class="card workload-card">
+                                <div class="card-content">
+                                    <h3 class="title is-5 workload-title">{{ workload.title }}</h3>
+                                    <p class="workload-specialty">{{ workload.specialty }}</p>
+                                    <div class="workload-details mt-3">
+                                        <p><strong>Год реализации:</strong> {{ workload.academic_year }}</p>
+                                        <p><strong>Год набора:</strong> {{ workload.admission_year }}</p>
+                                        <p><strong>Общая нагрузка:</strong> {{ workload.total_workload }} ч.</p>
+                                        <p><strong>Дата создания:</strong> {{ workload.date_created }}</p>
+                                    </div>
+                                </div>
+                                <footer class="card-footer">
+                                    <a href="{{ url_for('workload.view_workload', workload_id=workload.id) }}" class="card-footer-item has-text-info">
+                                        <span class="icon mr-1">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                        Просмотр
+                                    </a>
+                                    <a href="#" class="card-footer-item has-text-danger" 
+                                       onclick="confirmDelete({{ workload.id }}, '{{ workload.title }}')">
+                                        <span class="icon mr-1">
+                                            <i class="fas fa-trash"></i>
+                                        </span>
+                                        Удалить
+                                    </a>
+                                </footer>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <!-- Сообщение, если нет расчетов -->
+                    <div class="no-workloads-message">
+                        <h3 class="title is-4">У вас пока нет сохраненных расчетов</h3>
+                        <p class="mb-4">Для создания расчета нагрузки перейдите на страницу расчета</p>
+                        <a href="{{ url_for('main.index') }}" class="button is-primary">
+                            <span class="icon">
+                                <i class="fas fa-calculator"></i>
+                            </span>
+                            <span>Создать расчет</span>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div id="delete-confirm-modal-backdrop" class="delete-confirm-modal-backdrop">
+    <div class="delete-confirm-modal">
+        <h4 class="title is-5">Подтверждение удаления</h4>
+        <p>Вы действительно хотите удалить расчет "<span id="delete-workload-title"></span>"?</p>
+        <p class="has-text-danger mt-2">Это действие нельзя будет отменить.</p>
+        
+        <div class="delete-confirm-buttons">
+            <button id="cancel-delete" class="button">Отмена</button>
+            <button id="confirm-delete" class="button is-danger">Удалить</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Обработчик для бургер-меню
+        const burgerButton = document.getElementById('burger-menu-button');
+        const sidebar = document.getElementById('sidebar-menu');
+        const mainContent = document.getElementById('main-content');
+        
+        burgerButton.addEventListener('click', () => {
+            if (sidebar.style.display === 'none' || sidebar.style.width === '0px') {
+                // Плавное открытие
+                sidebar.style.display = 'block';
+                sidebar.style.width = '0px';
+                setTimeout(() => {
+                    sidebar.style.width = '250px';
+                }, 10);
+                
+                mainContent.classList.remove('is-12');
+                mainContent.classList.add('is-10');
+                burgerButton.classList.add('is-active');
+            } else {
+                // Плавное закрытие
+                sidebar.style.width = '0px';
+                setTimeout(() => {
+                    sidebar.style.display = 'none';
+                }, 300); // Должно совпадать с transition в CSS
+                
+                mainContent.classList.remove('is-10');
+                mainContent.classList.add('is-12');
+                burgerButton.classList.remove('is-active');
+            }
+        });
+        
+        // Загрузка ссылок из настроек
+        function loadSettings() {
+            fetch('/settings/api/settings')
+                .then(response => {
+                    if (!response.ok) {
+                        return {}; // Возвращаем пустой объект в случае ошибки
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Loaded settings for menu:', data);
+                    
+                    // Обновляем ссылки в меню
+                    const instructionLink = document.getElementById('instruction-link');
+                    const telegramLink = document.getElementById('telegram-link');
+                    
+                    if (data.ИнструкцияСсылка) {
+                        instructionLink.href = data.ИнструкцияСсылка;
+                        instructionLink.setAttribute('target', '_blank');
+                    }
+                    
+                    if (data.ТелеграмСсылка) {
+                        telegramLink.href = data.ТелеграмСсылка;
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки настроек для меню:', error);
+                });
+        }
+        
+        // Загружаем настройки при загрузке страницы
+        loadSettings();
+        
+        // Обработчики для модального окна подтверждения удаления
+        const deleteModalBackdrop = document.getElementById('delete-confirm-modal-backdrop');
+        const cancelDeleteButton = document.getElementById('cancel-delete');
+        const confirmDeleteButton = document.getElementById('confirm-delete');
+        
+        // ID расчета для удаления
+        let workloadIdToDelete = null;
+        
+        // Функция открытия модального окна подтверждения удаления
+        window.confirmDelete = function(workloadId, workloadTitle) {
+            workloadIdToDelete = workloadId;
+            document.getElementById('delete-workload-title').textContent = workloadTitle;
+            deleteModalBackdrop.classList.add('is-active');
+        };
+        
+        // Функция закрытия модального окна подтверждения удаления
+        function closeDeleteModal() {
+            deleteModalBackdrop.classList.remove('is-active');
+        }
+        
+        // Обработчик отмены удаления
+        cancelDeleteButton.addEventListener('click', closeDeleteModal);
+        
+        // Обработчик подтверждения удаления
+        confirmDeleteButton.addEventListener('click', function() {
+            if (workloadIdToDelete) {
+                // Отправляем запрос на удаление
+                fetch(`/workload/delete/${workloadIdToDelete}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Закрываем модальное окно
+                        closeDeleteModal();
+                        
+                        // Показываем сообщение об успешном удалении
+                        showNotification('Расчет успешно удален', 'is-success');
+                        
+                        // Перезагружаем страницу после небольшой задержки
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showNotification('Ошибка при удалении расчета: ' + (data.error || 'Неизвестная ошибка'), 'is-danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при удалении расчета:', error);
+                    showNotification('Ошибка при удалении расчета', 'is-danger');
+                });
+            }
+        });
+        
+        // Функция показа уведомления
+        function showNotification(message, type = 'is-info') {
+            const flashMessages = document.getElementById('flash-messages');
+            
+            const notification = document.createElement('div');
+            notification.className = `notification flash-message ${type}`;
+            notification.setAttribute('data-autodismiss', '');
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete';
+            deleteButton.addEventListener('click', () => {
+                notification.parentNode.removeChild(notification);
+            });
+            
+            notification.appendChild(deleteButton);
+            notification.appendChild(document.createTextNode(message));
+            
+            flashMessages.appendChild(notification);
+            
+            // Автоматическое исчезновение уведомления
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            }, 3000);
+        }
+    });
+</script>
+{% endblock %}

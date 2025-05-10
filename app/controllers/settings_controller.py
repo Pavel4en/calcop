@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, session
 from app.controllers.auth_controller import admin_required
 from app.models.norms import Norms
+from app.models.settings import Settings
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
 
@@ -9,6 +10,10 @@ settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
 def index():
     """Страница настроек"""
     user_dict = session.get('user', {})
+    
+    # Создаем таблицу настроек, если она не существует
+    Settings.create_settings_table()
+    
     return render_template('dashboard/settings.html', user=user_dict)
 
 # API для управления нормами
@@ -81,5 +86,41 @@ def delete_norm_api(norm_id):
         if not success:
             return jsonify({'error': 'Норма не найдена'}), 404
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# API для управления настройками
+@settings_bp.route('/api/settings', methods=['GET'])
+@admin_required
+def get_all_settings_api():
+    """API для получения всех настроек калькулятора"""
+    settings_data = Settings.get_all_settings()
+    return jsonify(settings_data)
+
+@settings_bp.route('/api/settings/<string:key>', methods=['GET'])
+@admin_required
+def get_setting_api(key):
+    """API для получения конкретной настройки по ключу"""
+    value = Settings.get_setting(key)
+    if value is None:
+        return jsonify({'error': 'Настройка не найдена'}), 404
+    return jsonify({key: value})
+
+@settings_bp.route('/api/settings', methods=['POST'])
+@admin_required
+def update_settings_api():
+    """API для обновления настроек калькулятора"""
+    if not request.is_json:
+        return jsonify({'error': 'Неверный формат данных'}), 400
+        
+    data = request.json
+    results = {}
+    
+    try:
+        for key, value in data.items():
+            success = Settings.update_setting(key, value)
+            results[key] = success
+        
+        return jsonify({"success": True, "results": results})
     except Exception as e:
         return jsonify({'error': str(e)}), 500

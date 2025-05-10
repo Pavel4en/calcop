@@ -17,11 +17,13 @@ def create_app(config_class=Config):
     from app.controllers.settings_controller import settings_bp
     from app.controllers.calculation_controller import calculation_bp
     from app.controllers.formula_controller import formulas_bp
+    from app.controllers.workload_controller import workload_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(calculation_bp)
     app.register_blueprint(formulas_bp)
+    app.register_blueprint(workload_bp)
     
     return app

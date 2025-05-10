@@ -36,13 +36,15 @@
 
     <!-- Основной контент с боковым меню -->
     <div class="columns is-gapless" style="min-height: calc(100vh - 52px);">
+
         <!-- Боковое меню (изначально скрыто) -->
         <div class="column is-2 sidebar has-background-light" id="sidebar-menu" style="display: none;">
             <aside class="menu p-4">
                 <p class="menu-label">Навигация</p>
                 <ul class="menu-list">
-                    <li><a class="is-active" href="#" data-section="Расчет нагрузки">Расчет нагрузки</a></li>
-                    <li><a href="#" data-section="Инструкция">Инструкция</a></li>
+                    <li><a class="is-active" href="{{ url_for('main.index') }}" data-section="Расчет нагрузки">Расчет нагрузки</a></li>
+                    <li><a href="#" id="instruction-link" data-section="Инструкция">Инструкция</a></li>
+                    <li><a href="#" id="telegram-link" data-section="Телеграм чат" target="_blank">Телеграм чат</a></li>
                     {% if user.is_admin %}
                     <li><a href="{{ url_for('settings.index') }}" data-section="Настройки">Настройки</a></li>
                     {% endif %}
@@ -234,6 +236,45 @@
 {% endblock %}
 
 {% block scripts %}
+
+<script>
+    // Загрузка ссылок из настроек
+document.addEventListener('DOMContentLoaded', function() {
+    // Функция для загрузки настроек
+    function loadSettings() {
+        fetch('/settings/api/settings')
+            .then(response => {
+                if (!response.ok) {
+                    return {}; // Возвращаем пустой объект в случае ошибки
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Loaded settings for menu:', data);
+                
+                // Обновляем ссылки в меню
+                const instructionLink = document.getElementById('instruction-link');
+                const telegramLink = document.getElementById('telegram-link');
+                
+                if (data.ИнструкцияСсылка) {
+                    instructionLink.href = data.ИнструкцияСсылка;
+                    instructionLink.setAttribute('target', '_blank');
+                }
+                
+                if (data.ТелеграмСсылка) {
+                    telegramLink.href = data.ТелеграмСсылка;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки настроек для меню:', error);
+            });
+    }
+    
+    // Загружаем настройки при загрузке страницы
+    loadSettings();
+});
+</script>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // Обработчик для бургер-меню

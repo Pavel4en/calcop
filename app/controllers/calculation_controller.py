@@ -40,12 +40,15 @@ def calculate_workload_route():
         program_info = {
             'academic_year': academic_year,
             'admission_year': admission_year,
+            'plan_file': plan_file,
             'specialty': plan_data[0][9] if len(plan_data[0]) > 9 else '',  # Титул
             'profile': plan_data[0][11] if len(plan_data[0]) > 11 else '',  # Специальность
             'department': plan_data[0][13] if len(plan_data[0]) > 13 else '',  # НазваниеПрофКафедры
             'education_form': plan_data[0][14] if len(plan_data[0]) > 14 else '',  # ФормаОбучения
             'specialty_code': specialty_code,
-            'qualification': plan_data[0][8] if len(plan_data[0]) > 8 else ''  # Квалификация
+            'qualification': plan_data[0][8] if len(plan_data[0]) > 8 else '',  # Квалификация
+            'contingent': contingent,
+            'course': course
         }
     
     # Индексы колонок в результате запроса
@@ -86,7 +89,7 @@ def calculate_workload_route():
     # Получаем все формулы из базы данных
     formulas = Formula.get_all_formulas()
     
-# Подготавливаем данные для расчета и выполняем расчет
+    # Подготавливаем данные для расчета и выполняем расчет
     calculated_data = []
     total_workload = 0
     total_credits = 0
@@ -190,6 +193,13 @@ def calculate_workload_route():
         'Комментарии'
     ]
     
+    # Сохраняем результаты в сессию для возможного последующего сохранения
+    session['calculated_data'] = calculated_data
+    session['workload_summary'] = workload_summary
+    session['program_info'] = program_info
+    session['contingent'] = contingent
+    session['course'] = course
+
     return render_template('dashboard/workload_results.html', 
                           user=user_dict,
                           program_info=program_info,

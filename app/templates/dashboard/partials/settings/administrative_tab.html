@@ -1,2 +1,160 @@
 <h3 class="title is-4">Административные настройки</h3>
-<p>Здесь будут размещены административные настройки системы.</p>
+
+<div class="notification is-info is-light mb-5">
+    <p>Здесь можно настроить основные параметры работы калькулятора затратности образовательных программ.</p>
+</div>
+
+<form id="admin-settings-form">
+    <div class="field mb-5">
+        <label class="label">Ссылка на инструкцию</label>
+        <div class="control has-icons-left">
+            <input type="url" class="input" id="instruction-link" placeholder="https://example.com/instruction">
+            <span class="icon is-small is-left">
+                <i class="fas fa-book"></i>
+            </span>
+        </div>
+        <p class="help">Укажите URL-адрес страницы с инструкцией по работе с калькулятором</p>
+    </div>
+    
+    <div class="field mb-5">
+        <label class="label">Ссылка на Телеграм-чат</label>
+        <div class="control has-icons-left">
+            <input type="url" class="input" id="telegram-link" placeholder="https://t.me/your_channel">
+            <span class="icon is-small is-left">
+                <i class="fab fa-telegram"></i>
+            </span>
+        </div>
+        <p class="help">Укажите URL-адрес Телеграм-чата для поддержки пользователей</p>
+    </div>
+    
+    <div class="field mb-5">
+        <label class="label">Минимальный коэффициент затратности</label>
+        <div class="control has-icons-left">
+            <input type="number" class="input" id="cost-coefficient" min="0" step="0.01" placeholder="15">
+            <span class="icon is-small is-left">
+                <i class="fas fa-calculator"></i>
+            </span>
+        </div>
+        <p class="help">
+            Минимальное значение коэффициента затратности. Если расчетное значение ниже указанного, 
+            оно будет выделено красным цветом.
+        </p>
+    </div>
+    
+    <div class="field">
+        <div class="control">
+            <button type="button" class="button is-primary" id="save-admin-settings">
+                <span class="icon">
+                    <i class="fas fa-save"></i>
+                </span>
+                <span>Сохранить настройки</span>
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+// Загрузка настроек при открытии вкладки
+document.addEventListener('DOMContentLoaded', function() {
+    // Функция загрузки настроек
+    function loadAdminSettings() {
+        fetch('/settings/api/settings')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('HTTP error ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Loaded admin settings:', data);
+                
+                // Заполняем форму полученными данными
+                document.getElementById('instruction-link').value = data.ИнструкцияСсылка || '';
+                document.getElementById('telegram-link').value = data.ТелеграмСсылка || '';
+                document.getElementById('cost-coefficient').value = data.КоэффициентЗатратности || '15';
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки настроек:', error);
+                showNotification('Ошибка загрузки настроек: ' + error.message, 'is-danger');
+            });
+    }
+    
+    // Инициализируем обработчик для кнопки сохранения
+    document.getElementById('save-admin-settings').addEventListener('click', function() {
+        // Получаем значения из формы
+        const instructionLink = document.getElementById('instruction-link').value;
+        const telegramLink = document.getElementById('telegram-link').value;
+        const costCoefficient = document.getElementById('cost-coefficient').value;
+        
+        // Формируем данные для отправки
+        const data = {
+            'ИнструкцияСсылка': instructionLink,
+            'ТелеграмСсылка': telegramLink,
+            'КоэффициентЗатратности': costCoefficient
+        };
+        
+        // Отправляем данные на сервер
+        fetch('/settings/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP error ' + response.status);
+            }
+            return response.json();
+        })
+        .then(result => {
+            console.log('Settings saved:', result);
+            showNotification('Настройки успешно сохранены', 'is-success');
+        })
+        .catch(error => {
+            console.error('Ошибка сохранения настроек:', error);
+            showNotification('Ошибка сохранения настроек: ' + error.message, 'is-danger');
+        });
+    });
+    
+    // Функция показа уведомления
+    function showNotification(message, type = 'is-info') {
+        const flashMessages = document.getElementById('flash-messages');
+        
+        const notification = document.createElement('div');
+        notification.className = `notification flash-message ${type}`;
+        notification.setAttribute('data-autodismiss', '');
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete';
+        deleteButton.addEventListener('click', () => {
+            notification.parentNode.removeChild(notification);
+        });
+        
+        notification.appendChild(deleteButton);
+        notification.appendChild(document.createTextNode(message));
+        
+        flashMessages.appendChild(notification);
+        
+        // Автоматическое исчезновение уведомления
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 3000);
+    }
+    
+    // Загружаем настройки при переключении на вкладку
+    document.getElementById('tab-administrative').addEventListener('click', function() {
+        loadAdminSettings();
+    });
+    
+    // Если вкладка административных настроек активна при загрузке страницы, загружаем настройки сразу
+    if (document.getElementById('tab-administrative').classList.contains('is-active')) {
+        loadAdminSettings();
+    }
+});
+</script>
