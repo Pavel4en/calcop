@@ -48,6 +48,7 @@ def login():
                 'is_admin': user.is_admin
             }
             session['user'] = user_dict
+            session.permanent = True  # Делаем сессию постоянной
             flash(f'Добро пожаловать, {user.full_name}!', 'success')
             return redirect(url_for('main.index'))
         else:
@@ -58,5 +59,6 @@ def login():
 @auth_bp.route('/logout')
 def logout():
     session.pop('user', None)
+    session.clear()  # Полная очистка сессии
     flash('Вы успешно вышли из системы', 'success')
     return redirect(url_for('auth.login'))

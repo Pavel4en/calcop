@@ -194,11 +194,13 @@ def calculate_workload_route():
     ]
     
     # Сохраняем результаты в сессию для возможного последующего сохранения
+    # Flask-Session автоматически обработает сериализацию больших данных
     session['calculated_data'] = calculated_data
     session['workload_summary'] = workload_summary
     session['program_info'] = program_info
     session['contingent'] = contingent
     session['course'] = course
+    session.modified = True  # Помечаем сессию как измененную
 
     return render_template('dashboard/workload_results.html', 
                           user=user_dict,

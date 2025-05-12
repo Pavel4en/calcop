@@ -197,6 +197,90 @@
         font-style: italic;
         color: #4a4a4a;
     }
+    
+    /* Стили для режима редактирования */
+    .edit-mode-display {
+        display: block;
+    }
+    
+    .edit-mode-input {
+        display: none;
+    }
+    
+    .edit-mode .edit-mode-display {
+        display: none;
+    }
+    
+    .edit-mode .edit-mode-input {
+        display: block;
+    }
+    
+    #study-plan-table input.input.is-small {
+        height: 2rem;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        width: 100%;
+    }
+    
+    /* Скрываем столбец "Учитывать" в режиме просмотра */
+    #edit-mode-column {
+        display: none;
+    }
+    
+    .edit-mode #edit-mode-column {
+        display: table-cell;
+    }
+    
+    .edit-mode .edit-mode-th-consider {
+        display: table-cell !important;
+    }
+    
+    /* Стили для чекбокса в режиме редактирования */
+    .checkbox input[type="checkbox"] {
+        width: 1.2rem;
+        height: 1.2rem;
+    }
+    
+    /* Стили для модального окна */
+    .delete-confirm-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(10, 10, 10, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .delete-confirm-modal-backdrop.is-active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .delete-confirm-modal {
+        background-color: white;
+        border-radius: 6px;
+        max-width: 90%;
+        width: 400px;
+        padding: 1.5rem;
+        box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
+    }
+    
+    .delete-confirm-buttons {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+    }
+    
+    .delete-confirm-buttons .button:not(:last-child) {
+        margin-right: 0.75rem;
+    }
 </style>
 {% endblock %}
 
@@ -204,6 +288,20 @@
 <div class="container is-fluid p-0">
     <!-- Навигационная панель -->
     <nav class="navbar is-light" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <!-- Бургер-меню -->
+            <a role="button" class="navbar-item burger-menu-toggle ml-2" id="burger-menu-button">
+                <span class="icon">
+                    <i class="fas fa-bars"></i>
+                </span>
+            </a>
+            
+            <!-- Название раздела -->
+            <div class="navbar-item">
+                <h1 class="title is-5" id="section-title">Просмотр расчета нагрузки</h1>
+            </div>
+        </div>
+
         <div class="navbar-end">
             <div class="navbar-item">
                 {{ user.full_name }}
@@ -283,6 +381,36 @@
                         
                         <div class="level-right">
                             <div class="level-item">
+                                <!-- Кнопка редактирования -->
+                                <button id="edit-mode-button" class="button is-primary mr-2" onclick="toggleEditMode()">
+                                    <span class="icon">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                    <span>Редактировать</span>
+                                </button>
+                                
+                                <!-- Кнопки для режима редактирования -->
+                                <button id="save-changes-button" class="button is-success mr-2" style="display: none;" onclick="saveChanges()">
+                                    <span class="icon">
+                                        <i class="fas fa-save"></i>
+                                    </span>
+                                    <span>Сохранить изменения</span>
+                                </button>
+                                
+                                <button id="recalculate-button" class="button is-info mr-2" style="display: none;" onclick="recalculate()">
+                                    <span class="icon">
+                                        <i class="fas fa-calculator"></i>
+                                    </span>
+                                    <span>Пересчитать</span>
+                                </button>
+                                
+                                <button id="cancel-edit-button" class="button is-light mr-2" style="display: none;" onclick="cancelEdit()">
+                                    <span class="icon">
+                                        <i class="fas fa-times"></i>
+                                    </span>
+                                    <span>Отмена</span>
+                                </button>
+                                
                                 <button class="button is-danger" onclick="confirmDelete({{ workload.id }}, '{{ workload.title }}')">
                                     <span class="icon">
                                         <i class="fas fa-trash"></i>
@@ -456,6 +584,12 @@
                     </div>
                     {% endif %}
                     
+                    <!-- Форма для расчета -->
+                    <form id="edit-form" action="{{ url_for('workload.update_workload', workload_id=workload.id) }}" method="POST" style="display: none;">
+                        <!-- Скрытые поля для основных параметров -->
+                        <input type="hidden" name="workload_id" value="{{ workload.id }}">
+                    </form>
+                    
                     <!-- Таблица с результатами расчета -->
                     <div class="box shadow">
                         <h3 class="title is-4 has-text-primary mb-4">Детализация расчета нагрузки</h3>
@@ -464,6 +598,7 @@
                             <table id="study-plan-table" class="table is-bordered is-striped is-hoverable is-fullwidth">
                                 <thead>
                                     <tr>
+                                        <th id="edit-mode-column" class="edit-mode-th-consider" style="display: none;">Учитывать</th>
                                         <th>Индекс</th>
                                         <th>Дисциплина</th>
                                         <th>Курс</th>
@@ -482,14 +617,40 @@
                                 </thead>
                                 <tbody>
                                     {% for row in calculated_data %}
+                                        {% set row_id = row['Индекс дисциплины']|string + '_' + row['Вид работы']|string + '_' + row['Семестр']|string %}
                                         {% if row['Учитывать'] %}
-                                        <tr>
+                                        <tr data-row-id="{{ row_id }}">
+                                            <!-- Чекбокс учитывать (скрыт по умолчанию) -->
+                                            <td class="has-text-centered edit-mode-input" style="display: none;">
+                                                <label class="checkbox">
+                                                    <input type="checkbox" 
+                                                           class="consider-checkbox" 
+                                                           name="consider_{{ row_id }}" 
+                                                           {% if row['Учитывать'] %}checked{% endif %}
+                                                           onchange="updateCommentsField(this)">
+                                                </label>
+                                            </td>
+                                            
                                             <td>{{ row['Индекс дисциплины'] }}</td>
                                             <td>
                                                 {{ row['Дисциплина'] }}
                                                 {% if row['Индекс дисциплины']|string|truncate(2, True, '') == 'Б2' and row['Недели']|int > 0 and row['С непосредственным участием ППС'] == 'on' %}
                                                     <hr class="my-2" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
                                                     <span class="tag is-info is-light">С участием ППС</span>
+                                                {% endif %}
+                                                
+                                                <!-- Скрытый чекбокс для участия ППС в режиме редактирования -->
+                                                {% if row['Индекс дисциплины']|string|truncate(2, True, '') == 'Б2' and row['Недели']|int > 0 %}
+                                                    <div class="edit-mode-input" style="display: none;">
+                                                        <hr class="my-2" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                                                        <label class="checkbox">
+                                                            <input type="checkbox" 
+                                                                   class="with-ppe-checkbox" 
+                                                                   name="with_ppe_{{ row_id }}"
+                                                                   {% if row['С непосредственным участием ППС'] == 'on' %}checked{% endif %}>
+                                                            <span>С участием ППС</span>
+                                                        </label>
+                                                    </div>
                                                 {% endif %}
                                             </td>
                                             <td>{{ row['Курс'] }}</td>
@@ -498,15 +659,44 @@
                                             <td>{{ row['Часы'] }}</td>
                                             <td>{{ row['Недели'] }}</td>
                                             <td>{{ row['Название кафедры'] }}</td>
-                                            <td>{{ row['Контингент по дисциплине'] }}</td>
-                                            <td>{{ row['Численность потока'] }}</td>
-                                            <td>{{ row['Количество подгрупп'] }}</td>
+                                            <td>
+                                                <span class="edit-mode-display">{{ row['Контингент по дисциплине'] }}</span>
+                                                <input type="number" 
+                                                       class="input is-small edit-mode-input" 
+                                                       name="contingent_{{ row_id }}" 
+                                                       value="{{ row['Контингент по дисциплине'] }}" 
+                                                       min="1" 
+                                                       style="display: none;">
+                                            </td>
+                                            <td>
+                                                <span class="edit-mode-display">{{ row['Численность потока'] }}</span>
+                                                <input type="number" 
+                                                       class="input is-small edit-mode-input" 
+                                                       name="stream_{{ row_id }}" 
+                                                       value="{{ row['Численность потока'] }}" 
+                                                       min="1" 
+                                                       style="display: none;">
+                                            </td>
+                                            <td>
+                                                <span class="edit-mode-display">{{ row['Количество подгрупп'] }}</span>
+                                                <input type="number" 
+                                                       class="input is-small edit-mode-input" 
+                                                       name="subgroups_{{ row_id }}" 
+                                                       value="{{ row['Количество подгрупп'] }}" 
+                                                       min="1" 
+                                                       style="display: none;">
+                                            </td>
                                             <td class="has-text-weight-bold {% if row['Нагрузка'] > 0 %}has-text-primary{% endif %}">
                                                 {{ row['Нагрузка'] }}
                                             </td>
                                             <td>{{ row['Пункт приказа'] }}</td>
                                             <td>
-                                                {{ row['Комментарии'] }}
+                                                <span class="edit-mode-display">{{ row['Комментарии'] }}</span>
+                                                <input type="text" 
+                                                       class="input is-small comment-field edit-mode-input" 
+                                                       name="comment_{{ row_id }}"
+                                                       value="{{ row.get('Комментарии', '') }}"
+                                                       style="display: none;">
                                             </td>
                                         </tr>
                                         {% endif %}
@@ -514,7 +704,7 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="has-background-primary-light">
-                                        <td colspan="11" class="has-text-right has-text-weight-bold">Итого:</td>
+                                        <td id="total-label" colspan="12" class="has-text-right has-text-weight-bold">Итого:</td>
                                         <td class="has-text-weight-bold">{{ workload_summary.total_workload }}</td>
                                         <td colspan="2"></td>
                                     </tr>
@@ -545,6 +735,336 @@
 
 {% block scripts %}
 <script>
+    // Флаг режима редактирования
+    let isEditMode = false;
+    
+    // Сохраненное состояние для отмены
+    let originalData = {};
+    
+    // Функция переключения режима редактирования
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        
+        const table = document.getElementById('study-plan-table');
+        const editButton = document.getElementById('edit-mode-button');
+        const saveButton = document.getElementById('save-changes-button');
+        const recalculateButton = document.getElementById('recalculate-button');
+        const cancelButton = document.getElementById('cancel-edit-button');
+        const totalLabel = document.getElementById('total-label');
+        
+        if (isEditMode) {
+            // Включаем режим редактирования
+            table.classList.add('edit-mode');
+            editButton.style.display = 'none';
+            saveButton.style.display = 'inline-flex';
+            recalculateButton.style.display = 'inline-flex';
+            cancelButton.style.display = 'inline-flex';
+            
+            // Сохраняем исходные данные
+            saveOriginalData();
+            
+            // Показываем столбец "Учитывать"
+            document.getElementById('edit-mode-column').style.display = 'table-cell';
+            
+            // Обновляем колспан для итогов
+            if (totalLabel) {
+                totalLabel.setAttribute('colspan', '13');
+            }
+            
+            // Показываем все столбцы "Учитывать" в режиме редактирования
+            document.querySelectorAll('.edit-mode-th-consider').forEach(el => {
+                el.style.display = 'table-cell';
+            });
+            
+            // Показываем скрытые строки (не учитываемые в расчете)
+            showHiddenRows();
+        } else {
+            // Выключаем режим редактирования
+            table.classList.remove('edit-mode');
+            editButton.style.display = 'inline-flex';
+            saveButton.style.display = 'none';
+            recalculateButton.style.display = 'none';
+            cancelButton.style.display = 'none';
+            
+            // Скрываем столбец "Учитывать"
+            document.getElementById('edit-mode-column').style.display = 'none';
+            
+            // Обновляем колспан для итогов
+            if (totalLabel) {
+                totalLabel.setAttribute('colspan', '12');
+            }
+            
+            // Скрываем все столбцы "Учитывать"
+            document.querySelectorAll('.edit-mode-th-consider').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Скрываем неучитываемые строки
+            hideUncheckedRows();
+        }
+    }
+    
+    // Функция сохранения исходных данных
+    function saveOriginalData() {
+        originalData = {};
+        
+        // Сохраняем значения всех инпутов
+        document.querySelectorAll('.edit-mode-input input').forEach(input => {
+            if (input.type === 'checkbox') {
+                originalData[input.name] = input.checked;
+            } else {
+                originalData[input.name] = input.value;
+            }
+        });
+    }
+    
+    // Функция восстановления исходных данных при отмене
+    function restoreOriginalData() {
+        Object.keys(originalData).forEach(name => {
+            const input = document.querySelector(`[name="${name}"]`);
+            if (input) {
+                if (input.type === 'checkbox') {
+                    input.checked = originalData[name];
+                } else {
+                    input.value = originalData[name];
+                }
+            }
+        });
+    }
+    
+    // Функция отмены редактирования
+    function cancelEdit() {
+        restoreOriginalData();
+        toggleEditMode();
+    }
+    
+    // Функция показа скрытых строк в режиме редактирования
+    function showHiddenRows() {
+        // Загружаем полные данные с сервера
+        fetch(`/workload/get_full_data/{{ workload.id }}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addMissingRows(data.calculated_data);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки полных данных:', error);
+            });
+    }
+    
+    // Функция добавления отсутствующих строк
+    function addMissingRows(allData) {
+        const tbody = document.querySelector('#study-plan-table tbody');
+        const existingRowIds = new Set();
+        
+        // Собираем существующие ID строк
+        document.querySelectorAll('#study-plan-table tbody tr').forEach(tr => {
+            const rowId = tr.getAttribute('data-row-id');
+            if (rowId) {
+                existingRowIds.add(rowId);
+            }
+        });
+        
+        // Добавляем отсутствующие строки
+        allData.forEach(row => {
+            const rowId = `${row['Индекс дисциплины']}_${row['Вид работы']}_${row['Семестр']}`;
+            
+            if (!existingRowIds.has(rowId) && !row['Учитывать']) {
+                const newRow = createTableRow(row, rowId);
+                tbody.appendChild(newRow);
+            }
+        });
+    }
+    
+    // Функция создания строки таблицы
+    function createTableRow(row, rowId) {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-row-id', rowId);
+        tr.classList.add('has-background-grey-lighter');
+        
+        // Создаем HTML для строки
+        tr.innerHTML = `
+            <td class="has-text-centered edit-mode-input">
+                <label class="checkbox">
+                    <input type="checkbox" 
+                           class="consider-checkbox" 
+                           name="consider_${rowId}" 
+                           ${row['Учитывать'] ? 'checked' : ''}
+                           onchange="updateCommentsField(this)">
+                </label>
+            </td>
+            <td>${row['Индекс дисциплины']}</td>
+            <td>
+                ${row['Дисциплина']}
+                ${createPPSCheckbox(row, rowId)}
+            </td>
+            <td>${row['Курс']}</td>
+            <td>${row['Семестр']}</td>
+            <td>${row['Вид работы']}</td>
+            <td>${row['Часы']}</td>
+            <td>${row['Недели']}</td>
+            <td>${row['Название кафедры']}</td>
+            <td>
+                <span class="edit-mode-display">${row['Контингент по дисциплине']}</span>
+                <input type="number" 
+                       class="input is-small edit-mode-input" 
+                       name="contingent_${rowId}" 
+                       value="${row['Контингент по дисциплине']}" 
+                       min="1">
+            </td>
+            <td>
+                <span class="edit-mode-display">${row['Численность потока']}</span>
+                <input type="number" 
+                       class="input is-small edit-mode-input" 
+                       name="stream_${rowId}" 
+                       value="${row['Численность потока']}" 
+                       min="1">
+            </td>
+            <td>
+                <span class="edit-mode-display">${row['Количество подгрупп']}</span>
+                <input type="number" 
+                       class="input is-small edit-mode-input" 
+                       name="subgroups_${rowId}" 
+                       value="${row['Количество подгрупп']}" 
+                       min="1">
+            </td>
+            <td class="has-text-weight-bold">${row['Нагрузка']}</td>
+            <td>${row['Пункт приказа']}</td>
+            <td>
+                <span class="edit-mode-display">${row['Комментарии'] || ''}</span>
+                <input type="text" 
+                       class="input is-small comment-field edit-mode-input" 
+                       name="comment_${rowId}"
+                       value="${row['Комментарии'] || ''}"
+                       ${!row['Учитывать'] ? 'readonly' : ''}>
+            </td>
+        `;
+        
+        return tr;
+    }
+    
+    // Функция создания чекбокса для участия ППС
+    function createPPSCheckbox(row, rowId) {
+        if (row['Индекс дисциплины'].startsWith('Б2') && parseInt(row['Недели']) > 0) {
+            return `
+                <div class="edit-mode-input">
+                    <hr class="my-2" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                    <label class="checkbox">
+                        <input type="checkbox" 
+                               class="with-ppe-checkbox" 
+                               name="with_ppe_${rowId}"
+                               ${row['С непосредственным участием ППС'] === 'on' ? 'checked' : ''}>
+                        <span>С участием ППС</span>
+                    </label>
+                </div>
+            `;
+        }
+        return '';
+    }
+    
+    // Функция скрытия неучитываемых строк
+    function hideUncheckedRows() {
+        document.querySelectorAll('#study-plan-table tbody tr').forEach(tr => {
+            const checkbox = tr.querySelector('.consider-checkbox');
+            if (checkbox && !checkbox.checked) {
+                tr.style.display = 'none';
+            }
+        });
+    }
+    
+    // Функция обновления поля комментария при изменении чекбокса
+    function updateCommentsField(checkbox) {
+        const row = checkbox.closest('tr');
+        const commentField = row.querySelector('.comment-field');
+        
+        if (!checkbox.checked) {
+            commentField.value = "Не участвует в расчете нагрузки";
+            commentField.setAttribute('readonly', 'readonly');
+            row.classList.add('has-background-grey-lighter');
+        } else {
+            if (commentField.value === "Не участвует в расчете нагрузки") {
+                commentField.value = "";
+            }
+            commentField.removeAttribute('readonly');
+            row.classList.remove('has-background-grey-lighter');
+        }
+    }
+    
+    // Функция пересчета нагрузки
+    function recalculate() {
+        // Собираем данные формы
+        const formData = new FormData();
+        formData.append('workload_id', {{ workload.id }});
+        
+        // Собираем все инпуты
+        document.querySelectorAll('.edit-mode-input input').forEach(input => {
+            if (input.type === 'checkbox') {
+                formData.append(input.name, input.checked ? 'on' : 'off');
+            } else {
+                formData.append(input.name, input.value);
+            }
+        });
+        
+        // Отправляем данные на сервер
+        fetch(`/workload/recalculate/{{ workload.id }}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                showNotification('Ошибка при пересчете: ' + data.error, 'is-danger');
+            }
+        })
+        .catch(error => {
+            showNotification('Ошибка при пересчете', 'is-danger');
+        });
+    }
+    
+    // Функция сохранения изменений
+    function saveChanges() {
+        const formData = new FormData();
+        formData.append('workload_id', {{ workload.id }});
+        
+        // Собираем все данные
+        document.querySelectorAll('.edit-mode-input input').forEach(input => {
+            if (input.type === 'checkbox') {
+                formData.append(input.name, input.checked ? 'on' : 'off');
+            } else {
+                formData.append(input.name, input.value);
+            }
+        });
+        
+        // Отправляем на сервер
+        fetch(`/workload/update/{{ workload.id }}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Изменения успешно сохранены', 'is-success');
+                
+                // Выходим из режима редактирования
+                toggleEditMode();
+                
+                // Перезагружаем страницу для обновления данных
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('Ошибка при сохранении: ' + data.error, 'is-danger');
+            }
+        })
+        .catch(error => {
+            showNotification('Ошибка при сохранении изменений', 'is-danger');
+        });
+    }
+    
+    // Стандартный код для загрузки настроек и управления модальными окнами
     document.addEventListener('DOMContentLoaded', () => {
         // Обработчик для бургер-меню
         const burgerButton = document.getElementById('burger-menu-button');
@@ -691,7 +1211,7 @@
         });
         
         // Функция показа уведомления
-        function showNotification(message, type = 'is-info') {
+        window.showNotification = function(message, type = 'is-info') {
             const flashMessages = document.getElementById('flash-messages');
             
             const notification = document.createElement('div');
@@ -721,18 +1241,4 @@
         }
     });
 </script>
-{% endblock %}brand">
-            <!-- Бургер-меню -->
-            <a role="button" class="navbar-item burger-menu-toggle ml-2" id="burger-menu-button">
-                <span class="icon">
-                    <i class="fas fa-bars"></i>
-                </span>
-            </a>
-            
-            <!-- Название раздела -->
-            <div class="navbar-item">
-                <h1 class="title is-5" id="section-title">Просмотр расчета нагрузки</h1>
-            </div>
-        </div>
-
-        <div class="
+{% endblock %}

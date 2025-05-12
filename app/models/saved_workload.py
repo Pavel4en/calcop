@@ -1,6 +1,7 @@
 from app.utils import execute_query
 from typing import List, Dict, Any, Optional, Tuple
 import datetime
+import json
 
 class SavedWorkload:
     @staticmethod
@@ -26,12 +27,25 @@ class SavedWorkload:
                 КоличествоСтавок FLOAT NOT NULL,
                 КоэффициентЗатратности FLOAT NOT NULL,
                 ТрудоемкостьЗЕТ FLOAT NOT NULL,
+                НормаНаСтавку FLOAT NOT NULL DEFAULT 900,
                 Комментарий NVARCHAR(MAX) NULL,
                 FOREIGN KEY (ПользовательID) REFERENCES Пользователи(ID)
             );
         END
         """
         execute_query(query_workload)
+        
+        # Добавляем колонку НормаНаСтавку к существующей таблице если она не существует
+        query_add_column = """
+        IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+                       WHERE TABLE_NAME = 'РасчетыНагрузки' 
+                       AND COLUMN_NAME = 'НормаНаСтавку')
+        BEGIN
+            ALTER TABLE РасчетыНагрузки 
+            ADD НормаНаСтавку FLOAT NOT NULL DEFAULT 900
+        END
+        """
+        execute_query(query_add_column)
         
         # Создание таблицы для сохранения сведений о программе
         query_program = """
@@ -76,6 +90,9 @@ class SavedWorkload:
                 Учитывать BIT NOT NULL DEFAULT 1,
                 FOREIGN KEY (РасчетID) REFERENCES РасчетыНагрузки(ID) ON DELETE CASCADE
             );
+            
+            -- Добавляем индекс для быстрого поиска по РасчетID
+            CREATE INDEX IX_СтрокиРасчетаНагрузки_РасчетID ON СтрокиРасчетаНагрузки(РасчетID);
         END
         """
         execute_query(query_rows)
@@ -110,10 +127,9 @@ class SavedWorkload:
             INSERT INTO РасчетыНагрузки (
                 НазваниеРасчета, ПользовательID, АкадемическийГод, ГодНабора, 
                 ФайлУчебногоПлана, Контингент, Курс, ОбщаяНагрузка, 
-                КоличествоСтавок, КоэффициентЗатратности, ТрудоемкостьЗЕТ, Комментарий
+                КоличествоСтавок, КоэффициентЗатратности, ТрудоемкостьЗЕТ, НормаНаСтавку, Комментарий
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-            SELECT SCOPE_IDENTITY() AS InsertedID;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """
             
             params = (
@@ -121,20 +137,21 @@ class SavedWorkload:
                 user_id,
                 program_info.get('academic_year', ''),
                 program_info.get('admission_year', ''),
-                program_info.get('file', ''),
+                program_info.get('plan_file', ''),
                 data.get('contingent', 0),
                 data.get('course', None),
                 workload_summary.get('total_workload', 0),
                 workload_summary.get('calculated_positions', 0),
                 workload_summary.get('cost_coefficient', 0),
                 workload_summary.get('total_zet_hours', 0),
+                workload_summary.get('norm_hours_per_position', 900),  # Сохраняем актуальную норму
                 comment
             )
             
-            # Выполняем запрос без fetch_one
+            # Выполняем вставку основной записи
             execute_query(query_insert_workload, params)
             
-            # Получаем ID вставленной записи отдельным запросом
+            # Получаем ID вставленной записи
             id_query = "SELECT IDENT_CURRENT('РасчетыНагрузки') AS ID"
             id_result = execute_query(id_query, fetch_one=True)
             workload_id = int(id_result[0])
@@ -160,39 +177,46 @@ class SavedWorkload:
             
             execute_query(query_insert_program, program_params)
             
-            # Вставляем строки расчета
-            query_insert_row = """
-            INSERT INTO СтрокиРасчетаНагрузки (
-                РасчетID, ИндексДисциплины, Дисциплина, Курс, Семестр, 
-                ВидРаботы, Часы, Недели, Кафедра, КонтингентПоДисциплине, 
-                ЧисленностьПотока, КоличествоПодгрупп, НепосредственноеУчастиеППС, 
-                Нагрузка, ПунктПриказа, Комментарий, Учитывать
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
+            # Сохраняем строки расчета пакетами для оптимизации
+            batch_size = 100
+            total_rows = len(calculated_data)
             
-            for row in calculated_data:
-                row_params = (
-                    workload_id,
-                    row.get('Индекс дисциплины', ''),
-                    row.get('Дисциплина', ''),
-                    row.get('Курс', None),
-                    row.get('Семестр', None),
-                    row.get('Вид работы', ''),
-                    row.get('Часы', 0),
-                    row.get('Недели', 0),
-                    row.get('Название кафедры', ''),
-                    row.get('Контингент по дисциплине', 0),
-                    row.get('Численность потока', 0),
-                    row.get('Количество подгрупп', 1),
-                    1 if row.get('С непосредственным участием ППС', '') == 'on' else 0,
-                    row.get('Нагрузка', 0),
-                    row.get('Пункт приказа', ''),
-                    row.get('Комментарии', ''),
-                    1 if row.get('Учитывать', False) else 0
-                )
+            for i in range(0, total_rows, batch_size):
+                batch = calculated_data[i:i + batch_size]
+                batch_queries = []
                 
-                execute_query(query_insert_row, row_params)
+                for row in batch:
+                    query_row = """
+                    INSERT INTO СтрокиРасчетаНагрузки (
+                        РасчетID, ИндексДисциплины, Дисциплина, Курс, Семестр, 
+                        ВидРаботы, Часы, Недели, Кафедра, КонтингентПоДисциплине, 
+                        ЧисленностьПотока, КоличествоПодгрупп, НепосредственноеУчастиеППС, 
+                        Нагрузка, ПунктПриказа, Комментарий, Учитывать
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    
+                    row_params = (
+                        workload_id,
+                        row.get('Индекс дисциплины', ''),
+                        row.get('Дисциплина', ''),
+                        row.get('Курс', None),
+                        row.get('Семестр', None),
+                        row.get('Вид работы', ''),
+                        row.get('Часы', 0),
+                        row.get('Недели', 0),
+                        row.get('Название кафедры', ''),
+                        row.get('Контингент по дисциплине', 0),
+                        row.get('Численность потока', 0),
+                        row.get('Количество подгрупп', 1),
+                        1 if row.get('С непосредственным участием ППС', '') == 'on' else 0,
+                        row.get('Нагрузка', 0),
+                        row.get('Пункт приказа', ''),
+                        row.get('Комментарии', ''),
+                        1 if row.get('Учитывать', False) else 0
+                    )
+                    
+                    execute_query(query_row, row_params)
             
             return workload_id
         except Exception as e:
@@ -261,12 +285,13 @@ class SavedWorkload:
         return workloads
     
     @staticmethod
-    def get_workload_by_id(workload_id: int) -> Optional[Dict[str, Any]]:
+    def get_workload_by_id(workload_id: int, include_hidden: bool = False) -> Optional[Dict[str, Any]]:
         """
         Получение расчета нагрузки по ID
         
         Args:
             workload_id: ID расчета
+            include_hidden: Включить скрытые строки (не учитываемые в расчете)
             
         Returns:
             Optional[Dict[str, Any]]: Данные расчета или None, если не найден
@@ -288,7 +313,8 @@ class SavedWorkload:
             w.КоэффициентЗатратности,
             w.ТрудоемкостьЗЕТ,
             w.Комментарий,
-            u.ФИО as СоздательФИО
+            u.ФИО as СоздательФИО,
+            ISNULL(w.НормаНаСтавку, 900) as НормаНаСтавку
         FROM 
             РасчетыНагрузки w
         LEFT JOIN 
@@ -324,7 +350,7 @@ class SavedWorkload:
                 'calculated_positions': workload_result[10],
                 'cost_coefficient': workload_result[11],
                 'total_zet_hours': workload_result[12],
-                'norm_hours_per_position': 900  # По умолчанию
+                'norm_hours_per_position': workload_result[15]  # Берем из БД
             }
         }
         
@@ -357,7 +383,7 @@ class SavedWorkload:
                 'admission_year': workload_data['admission_year']
             }
         
-        # Получаем строки расчета
+        # Получаем строки расчета пакетами
         query_rows = """
         SELECT 
             ИндексДисциплины,
@@ -379,10 +405,13 @@ class SavedWorkload:
         FROM 
             СтрокиРасчетаНагрузки
         WHERE 
-            РасчетID = ?
-        ORDER BY
-            ИндексДисциплины, Семестр, ВидРаботы
-        """
+            РасчетID = ?"""
+        
+        # Если не включать скрытые, то только учитываемые строки
+        if not include_hidden:
+            query_rows += " AND Учитывать = 1"
+            
+        query_rows += " ORDER BY ИндексДисциплины, Семестр, ВидРаботы"
         
         rows_results = execute_query(query_rows, (workload_id,), fetch_all=True)
         
@@ -408,12 +437,107 @@ class SavedWorkload:
                 'Нагрузка': row[12],
                 'Пункт приказа': row[13],
                 'Комментарии': row[14],
-                'Учитывать': bool(row[15])
+                'Учитывать': bool(row[15]),
+                'ЗЕТ': None,  # Заполним позже при необходимости
+                'Квалификация': program_result[3] if program_result else None,
+                'Форма обучения': program_result[4] if program_result else None,
+                'Файл УП': workload_data.get('plan_file', '')
             })
         
         workload_data['calculated_data'] = calculated_data
         
         return workload_data
+    
+    @staticmethod
+    def update_workload(workload_id: int, data: Dict[str, Any]) -> bool:
+        """
+        Обновление расчета нагрузки
+        
+        Args:
+            workload_id: ID расчета
+            data: Новые данные расчета
+            
+        Returns:
+            bool: True, если обновление успешно
+        """
+        try:
+            # Получаем данные для обновления
+            program_info = data.get('program_info', {})
+            workload_summary = data.get('workload_summary', {})
+            calculated_data = data.get('calculated_data', [])
+            
+            # Обновляем основные данные расчета
+            query_update_workload = """
+            UPDATE РасчетыНагрузки SET
+                Контингент = ?,
+                ОбщаяНагрузка = ?,
+                КоличествоСтавок = ?,
+                КоэффициентЗатратности = ?,
+                ТрудоемкостьЗЕТ = ?,
+                НормаНаСтавку = ?
+            WHERE ID = ?
+            """
+            
+            params = (
+                data.get('contingent', 0),
+                workload_summary.get('total_workload', 0),
+                workload_summary.get('calculated_positions', 0),
+                workload_summary.get('cost_coefficient', 0),
+                workload_summary.get('total_zet_hours', 0),
+                workload_summary.get('norm_hours_per_position', 900),
+                workload_id
+            )
+            
+            execute_query(query_update_workload, params)
+            
+            # Удаляем старые строки расчета
+            delete_rows_query = "DELETE FROM СтрокиРасчетаНагрузки WHERE РасчетID = ?"
+            execute_query(delete_rows_query, (workload_id,))
+            
+            # Вставляем обновленные строки расчета
+            batch_size = 100
+            total_rows = len(calculated_data)
+            
+            for i in range(0, total_rows, batch_size):
+                batch = calculated_data[i:i + batch_size]
+                
+                for row in batch:
+                    query_row = """
+                    INSERT INTO СтрокиРасчетаНагрузки (
+                        РасчетID, ИндексДисциплины, Дисциплина, Курс, Семестр, 
+                        ВидРаботы, Часы, Недели, Кафедра, КонтингентПоДисциплине, 
+                        ЧисленностьПотока, КоличествоПодгрупп, НепосредственноеУчастиеППС, 
+                        Нагрузка, ПунктПриказа, Комментарий, Учитывать
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    
+                    row_params = (
+                        workload_id,
+                        row.get('Индекс дисциплины', ''),
+                        row.get('Дисциплина', ''),
+                        row.get('Курс', None),
+                        row.get('Семестр', None),
+                        row.get('Вид работы', ''),
+                        row.get('Часы', 0),
+                        row.get('Недели', 0),
+                        row.get('Название кафедры', ''),
+                        row.get('Контингент по дисциплине', 0),
+                        row.get('Численность потока', 0),
+                        row.get('Количество подгрупп', 1),
+                        1 if row.get('С непосредственным участием ППС', '') == 'on' else 0,
+                        row.get('Нагрузка', 0),
+                        row.get('Пункт приказа', ''),
+                        row.get('Комментарии', ''),
+                        1 if row.get('Учитывать', False) else 0
+                    )
+                    
+                    execute_query(query_row, row_params)
+            
+            return True
+        except Exception as e:
+            print(f"Ошибка при обновлении расчета: {e}")
+            return False
     
     @staticmethod
     def delete_workload(workload_id: int) -> bool:
